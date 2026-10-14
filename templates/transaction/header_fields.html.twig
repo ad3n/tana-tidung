@@ -2,7 +2,6 @@
 {% set notes_on_right = (transaction ? transaction.type.value : values.type) in [1, 2] %}
 {% set field_columns = notes_on_right ? 'col-md-6' : 'col-md-6 col-xl-4' %}
     <div class="card-body">
-        {% if transaction %}<p>{{ 'transaction.fiscal_year'|trans }}: <strong>{{ transaction.fiscalYear.year }}</strong></p>{% endif %}
         <div class="row">
         {% if notes_on_right %}<div class="col-lg-8"><div class="row">{% endif %}
         <input type="hidden" id="transaction-type" name="type" value="{{ transaction ? transaction.type.value : values.type }}">

@@ -15,8 +15,15 @@ final class Stock extends AbstractController
     #[Route('/transactions/stocks', name: self::class, methods: ['GET'], priority: 2)]
     public function __invoke(Request $request, TransactionService $service): Response
     {
+        $organizationId = $request->query->getString('organization_id') ?: null;
+        $search = trim($request->query->getString('q'));
+        $stocks = $service->stockSummary($organizationId, $search);
+
         return $this->render('transaction/stock.html.twig', [
-            'page_title' => 'transaction.stock', 'stocks' => $service->stocks($request->query->getString('organization_id') ?: null),
+            'page_title' => 'transaction.stock', 'stocks' => $stocks,
+            'search' => $search, 'organizations' => $service->stockOrganizations(),
+            'own_organization' => $service->access->organization(),
+            'selected_organization' => $service->access->organization()?->getId() ?? $organizationId,
         ]);
     }
 }

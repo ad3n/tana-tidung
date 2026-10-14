@@ -18,7 +18,7 @@ use KejawenLab\Application\Entity\Source;
 use KejawenLab\Application\Entity\Unit;
 use Symfony\Component\Dotenv\Dotenv;
 
-// Uses the development fixture account and removes records created by this check.
+// Uses isolated test accounts and removes records created by this check.
 $base = getenv('SMOKE_BASE_URL') ?: 'http://nginx';
 
 function request(string $path, int $expected, string $method = 'GET', string $payload = '', array $headers = []): array
@@ -147,7 +147,7 @@ try {
         $em->flush();
         $orgs[$key] = $org;
     }
-    foreach (['admin', 'A', 'B', 'C', 'orphan', 'reader', 'denied'] as $key) {
+    foreach (['admin', 'A', 'B', 'C', 'orphan', 'reader', 'denied', 'apprA', 'apprB'] as $key) {
         $user = new User();
         $user->setUsername('tx'.$key.strtolower($suffix));
         $user->setFullName('Tx '.$key);
@@ -156,13 +156,16 @@ try {
         $user->setGroup('admin' === $key ? $super : $groups[match ($key) {
             'reader' => 'read', 'denied' => 'none', default => 'full',
         }]);
+        if (str_starts_with($key, 'appr')) {
+            $user->setGroup($em->getRepository(Group::class)->findOneBy(['code' => 'APPRV']));
+        }
         $em->persist($user);
         $em->flush();
         $users[$key] = $user;
         if (!in_array($key, ['admin', 'orphan'], true)) {
             $employee = new Employee();
             $employee->setUser($user);
-            $employee->setOrganization($orgs[$key] ?? $orgs['A']);
+            $employee->setOrganization($orgs['apprB' === $key ? 'B' : $key] ?? $orgs['A']);
             $employee->setLevel($level);
             $employee->setCode('TX'.$key.$suffix);
             $employee->setName('Tx '.$key);
@@ -223,7 +226,8 @@ try {
     apiAs('admin', 'transactions', 400, 'POST', $receiptData + ['reference_number' => '   ']);
     apiAs('admin', $r, 400, 'PUT', $receiptData + ['reference_number' => '']);
     checkModule(1 === $receipt['status'] && 1 === $receipt['type'], 'Enum values must be integers');
-    apiAs('admin', $r.'/post', 400, 'POST');
+    apiAs('admin', $r.'/submit', 400, 'POST');
+    apiAs('admin', $r.'/verify', 409, 'POST');
     $lineData = ['item_id' => $item->getId(), 'unit_id' => $pack->getId(), 'qty' => '2', 'expiry_date' => date('Y-m-d', strtotime(max($date, date('Y-m-d')).' +100 days')), 'batch_number' => 'LOT-'.$suffix];
     apiAs('admin', $r.'/items', 400, 'POST', array_diff_key($lineData, ['expiry_date' => true]));
     apiAs('admin', $r.'/items', 400, 'POST', array_replace($lineData, ['qty' => '-1']));
@@ -232,7 +236,23 @@ try {
     apiAs('admin', 'items/'.$item->getId(), 400, 'PUT', ['category' => $category->getId(), 'code' => $item->getCode(), 'name' => 'Tx item', 'unit' => $pack->getId(), 'status' => true]);
     $db->update('item_unit_conversions', ['factor' => '30'], ['id' => $conversion->getId()]);
     checkModule('0.000000' === stockQty('admin', $orgs['A']->getId(), $item->getId()), 'Draft changed stock');
-    $posted = apiAs('admin', $r.'/post', 200, 'POST');
+    apiAs('admin', $r.'/post', 409, 'POST');
+    checkModule(5 === apiAs('admin', $r.'/submit', 200, 'POST')['status'], 'Receipt submission failed');
+    apiAs('A', $r.'/verify', 403, 'POST');
+    apiAs('apprB', $r.'/verify', 404, 'POST');
+    apiAs('admin', $r.'/items', 409, 'POST', $lineData);
+    checkModule('0.000000' === stockQty('A', $orgs['A']->getId(), $item->getId()), 'Submitted receipt changed stock');
+    apiAs('apprA', $r.'/return', 400, 'POST');
+    checkModule(7 === apiAs('apprA', $r.'/return', 200, 'POST', ['note' => 'Perbaiki faktur'])['status'], 'Return failed');
+    apiAs('apprA', $r.'/items', 403, 'POST', $lineData);
+    apiAs('admin', $r, 200, 'PUT', $receiptData + ['reference_number' => 'REVISED-'.$suffix]);
+    apiAs('admin', $r.'/submit', 200, 'POST');
+    $db->update('transactions', ['created_by_id' => $users['apprA']->getId()], ['id' => $receipt['id']]);
+    apiAs('apprA', $r.'/verify', 403, 'POST');
+    $db->update('transactions', ['created_by_id' => $users['admin']->getId()], ['id' => $receipt['id']]);
+    $posted = apiAs('apprA', $r.'/verify', 200, 'POST');
+    checkModule('verify' === end($posted['workflow_history'])['action'], 'Verification history missing');
+    apiAs('apprA', 'transactions', 403, 'POST', $receiptData + ['reference_number' => 'NO-CREATE']);
     checkModule(3 === $posted['status'] && '50.000000' === $posted['items'][0]['base_qty'], 'Posting changed conversion snapshot');
     checkModule($posted['items'][0]['batch_number'] === $lineData['batch_number'] && $posted['items'][0]['allocations'][0]['batch_number'] === $lineData['batch_number'], 'Manual batch number changed');
     apiAs('admin', $r.'/post', 409, 'POST');
@@ -256,6 +276,15 @@ try {
     apiAs('B', $t.'/send', 403, 'POST');
     apiAs('B', $t.'/items', 403, 'POST', ['item_id' => $item->getId(), 'unit_id' => $unit->getId(), 'qty' => '1']);
     apiAs('B', $t.'/receive', 409, 'POST');
+    apiAs('A', $t.'/send', 409, 'POST');
+    apiAs('A', $t.'/submit', 200, 'POST');
+    apiAs('A', $t.'/approve', 403, 'POST');
+    apiAs('apprB', $t.'/approve', 403, 'POST');
+    apiAs('apprB', $t.'/return', 403, 'POST', ['note' => 'Wrong organization']);
+    checkModule(6 === apiAs('apprA', $t.'/approve', 200, 'POST')['status'], 'Transfer approval failed');
+    apiAs('apprA', $t.'/send', 403, 'POST');
+    apiAs('A', $t.'/items', 409, 'POST', ['item_id' => $item->getId(), 'unit_id' => $unit->getId(), 'qty' => '1']);
+    checkModule('50.000000' === stockQty('A', $orgs['A']->getId(), $item->getId()), 'Approval changed stock');
     checkModule(2 === apiAs('A', $t.'/send', 200, 'POST')['status'], 'Transfer not sent');
     apiAs('A', $t.'/send', 409, 'POST');
     apiAs('A', $t.'/cancel', 409, 'POST');
@@ -263,6 +292,21 @@ try {
     checkModule('20.000000' === stockQty('A', $orgs['A']->getId(), $item->getId()), 'Origin available stock incorrect');
     checkModule('30.000000' === stockQty('A', $orgs['A']->getId(), $item->getId(), 'IN_TRANSIT'), 'Transit stock incorrect');
     checkModule('0.000000' === stockQty('B', $orgs['B']->getId(), $item->getId()), 'Destination stock increased before receive');
+    $summary = apiAs('A', 'transactions/stocks?summary=1&q=TX%20ITEM', 200)['items'];
+    checkModule(1 === count($summary) && $summary[0]['item_id'] === $item->getId(), 'Stock search or aggregation failed');
+    checkModule('20.000000' === $summary[0]['available'] && '30.000000' === $summary[0]['in_transit'] && '50.000000' === $summary[0]['total'], 'Stock summary combined statuses incorrectly');
+    checkModule(2 === count($summary[0]['batches']), 'Batch detail omitted available or transit stock');
+    $codeSearch = rawurlencode(strtolower(substr($item->getCode(), 2)));
+    checkModule($summary === apiAs('A', 'transactions/stocks?summary=1&q='.$codeSearch, 200)['items'], 'Partial case-insensitive item code search failed');
+    checkModule([] === apiAs('admin', 'transactions/stocks?summary=1&organization_id='.$orgs['B']->getId().'&q='.$codeSearch, 200)['items'], 'Code search bypassed organization filter');
+    checkModule(2 === count(apiAs('A', 'transactions/stocks?q='.$codeSearch, 200)['items']), 'Batch stock code search failed');
+    checkModule([] === apiAs('A', 'transactions/stocks?summary=1&q=unmatched-'.$suffix, 200)['items'], 'Stock search failed to filter items');
+    checkModule([] === apiAs('A', 'transactions/stocks?summary=1&q=%25', 200)['items'], 'Literal search treated percent as wildcard');
+    apiAs('A', 'transactions/stocks?summary=1&organization_id='.$orgs['B']->getId(), 403);
+    apiAs('denied', 'transactions/stocks?summary=1', 403);
+    $adminSummary = apiAs('admin', 'transactions/stocks?summary=1&organization_id='.$orgs['A']->getId().'&q=Tx%20item', 200)['items'];
+    checkModule($adminSummary === $summary, 'Admin organization filter differs from own organization stock');
+
     checkModule(3 === apiAs('B', $t.'/receive', 200, 'POST')['status'], 'Receive failed');
     apiAs('B', $t.'/receive', 409, 'POST');
     checkModule('30.000000' === stockQty('B', $orgs['B']->getId(), $item->getId()), 'Destination stock incorrect');
@@ -271,6 +315,8 @@ try {
     $disposal = newTransaction('B', $disposalData);
     $d = 'transactions/'.$disposal['id'];
     apiAs('B', $d.'/items', 201, 'POST', ['item_id' => $item->getId(), 'unit_id' => $unit->getId(), 'qty' => '5']);
+    apiAs('B', $d.'/submit', 200, 'POST');
+    apiAs('apprB', $d.'/approve', 200, 'POST');
     apiAs('B', $d.'/post', 200, 'POST');
     checkModule('25.000000' === stockQty('B', $orgs['B']->getId(), $item->getId()), 'Disposal stock incorrect');
     $oversell = newTransaction('B', $disposalData);
@@ -280,11 +326,14 @@ try {
     apiAs('B', $o.'/items', 409, 'POST', ['item_id' => $item->getId(), 'unit_id' => $pack->getId(), 'qty' => '1']);
     checkModule('25.000000' === stockQty('B', $orgs['B']->getId(), $item->getId()), 'Failed posting did not roll back all lines');
     checkModule(1 === apiAs('B', $o, 200)['status'], 'Failed posting changed status');
-    apiAs('B', $o.'/cancel', 200, 'POST');
+    apiAs('B', $o.'/cancel', 400, 'POST');
+    apiAs('B', $o.'/cancel', 200, 'POST', ['note' => 'Dibatalkan oleh pengurus']);
     apiAs('B', $o.'/post', 409, 'POST');
     $return = newTransaction('B', ['type' => 2, 'date' => $date, 'to_organization_id' => $orgs['A']->getId(), 'reference_number' => $transfer['code'], 'notes' => 'Pengembalian']);
     $returnPath = 'transactions/'.$return['id'];
     apiAs('B', $returnPath.'/items', 201, 'POST', ['item_id' => $item->getId(), 'unit_id' => $unit->getId(), 'qty' => '5']);
+    apiAs('B', $returnPath.'/submit', 200, 'POST');
+    apiAs('admin', $returnPath.'/approve', 200, 'POST');
     apiAs('B', $returnPath.'/send', 200, 'POST');
     apiAs('A', $returnPath.'/receive', 200, 'POST');
     checkModule('25.000000' === stockQty('A', $orgs['A']->getId(), $item->getId()), 'Return transfer failed');
@@ -300,12 +349,15 @@ try {
     foreach ([['EARLY', '3', $soon], ['LATER', '7', $later]] as [$batch, $qty, $expiry]) {
         apiAs('A', $fr.'/items', 201, 'POST', ['item_id' => $item->getId(), 'unit_id' => $unit->getId(), 'qty' => $qty, 'batch_number' => $batch.$suffix, 'expiry_date' => $expiry]);
     }
-    $receivedLots = apiAs('A', $fr.'/post', 200, 'POST');
+    apiAs('A', $fr.'/submit', 200, 'POST');
+    $receivedLots = apiAs('admin', $fr.'/verify', 200, 'POST');
     $fefo = newTransaction('A', $transferData);
     $ft = 'transactions/'.$fefo['id'];
     apiAs('A', $ft.'/items', 201, 'POST', ['item_id' => $item->getId(), 'unit_id' => $unit->getId(), 'qty' => '5']);
     $earlyLot = $db->fetchOne('SELECT id FROM stock_lots WHERE batch_number = ?', ['EARLY'.$suffix]);
     apiAs('A', $ft.'/items', 409, 'POST', ['item_id' => $item->getId(), 'unit_id' => $unit->getId(), 'qty' => '4', 'stock_lot_id' => $earlyLot]);
+    apiAs('A', $ft.'/submit', 200, 'POST');
+    apiAs('apprA', $ft.'/approve', 200, 'POST');
     $sent = apiAs('A', $ft.'/send', 200, 'POST');
     $allocated = [];
     foreach ($sent['items'][0]['allocations'] as $allocation) {
@@ -321,6 +373,8 @@ try {
     $expiredDisposal = newTransaction('A', ['type' => 3, 'date' => $date, 'notes' => 'Kedaluwarsa']);
     $ed = 'transactions/'.$expiredDisposal['id'];
     apiAs('A', $ed.'/items', 201, 'POST', ['item_id' => $item->getId(), 'unit_id' => $unit->getId(), 'qty' => '1', 'stock_lot_id' => $expiredLot]);
+    apiAs('A', $ed.'/submit', 200, 'POST');
+    apiAs('admin', $ed.'/approve', 200, 'POST');
     apiAs('A', $ed.'/post', 200, 'POST');
 
     // Two requests competing for the same stock must not both succeed.
@@ -329,6 +383,8 @@ try {
     for ($i = 0; $i < 2; ++$i) {
         $tx = newTransaction('B', $disposalData);
         apiAs('B', 'transactions/'.$tx['id'].'/items', 201, 'POST', ['item_id' => $item->getId(), 'unit_id' => $unit->getId(), 'qty' => $balance]);
+        apiAs('B', 'transactions/'.$tx['id'].'/submit', 200, 'POST');
+        apiAs('admin', 'transactions/'.$tx['id'].'/approve', 200, 'POST');
         $parallel[] = $tx['id'];
     }
     $sockets = [];
@@ -358,7 +414,8 @@ try {
     foreach (['', '   '] as $blankBatch) {
         apiAs('A', $autoPath.'/items', 201, 'POST', array_replace($lineData, ['qty' => '1', 'batch_number' => $blankBatch]));
     }
-    $autoPosted = apiAs('A', $autoPath.'/post', 200, 'POST');
+    apiAs('A', $autoPath.'/submit', 200, 'POST');
+    $autoPosted = apiAs('admin', $autoPath.'/verify', 200, 'POST');
     $batchNumbers = [];
     foreach ($autoPosted['items'] as $line) {
         checkModule((bool) preg_match('/^BATCH'.str_replace('-', '', $date).'[1-9][0-9]{4}$/D', $line['batch_number']), 'Automatic batch number missing');
@@ -379,7 +436,10 @@ try {
     [$menuHtml] = request('/admin/transactions', 200, headers: $auth);
     checkModule(str_contains($menuHtml, '/admin/transactions/stocks') && str_contains($menuHtml, 'Stok Barang'), 'Stock menu missing');
     checkModule((bool) preg_match('~Master.*?/admin/fiscal-years.*?/admin/units~s', $menuHtml), 'Fiscal year is not first under Master');
-    request('/admin/transactions/stocks', 200, headers: $auth);
+    [$stockHtml] = request('/admin/transactions/stocks?organization_id='.$orgs['A']->getId().'&q=Tx%20item', 200, headers: $auth);
+    checkModule(str_contains($stockHtml, 'stock-search') && str_contains($stockHtml, 'stock-organization') && str_contains($stockHtml, 'Detail Batch') && str_contains($stockHtml, 'data-stock-item="'.$item->getId().'"'), 'Stock summary filters or batch action missing');
+    [$emptyStockHtml] = request('/admin/transactions/stocks?q=unmatched-'.$suffix, 200, headers: $auth);
+    checkModule(!str_contains($emptyStockHtml, 'data-stock-item='), 'Stock search UI did not filter results');
     foreach (['receipts' => 1, 'transfers' => 2, 'disposals' => 3] as $section => $type) {
         [$sectionHtml] = request('/admin/transactions/'.$section, 200, headers: $auth);
         checkModule(str_contains($sectionHtml, 'type="hidden" id="transaction-type" name="type" value="'.$type.'"'), 'Transaction type is not fixed by submenu');
@@ -435,6 +495,48 @@ try {
     [$invalidHtml] = request('/admin/transactions/receipts', 200, 'POST', http_build_query($invalidHeader + ['items' => [$lineData, array_replace($lineData, ['qty' => '-1'])]]), $auth);
     checkModule(!(bool) $db->fetchOne('SELECT id FROM transactions WHERE reference_number = ?', [$invalidHeader['reference_number']]), 'Invalid detail left a partial transaction');
     checkModule(str_contains($invalidHtml, 'transaction-pending-data') && str_contains($invalidHtml, 'INVALID-BULK-'.$suffix), 'Failed submission lost form data');
+    [$draftHtml] = request('/admin/transactions/'.$bulkId, 200, headers: $auth);
+    checkModule(str_contains($draftHtml, 'value="submit"') && !str_contains($draftHtml, 'value="verify"'), 'Draft UI allows verification');
+    request('/admin/transactions/'.$bulkId, 303, 'POST', http_build_query(['_operation' => 'submit']), $auth);
+    [$submittedHtml] = request('/admin/transactions/'.$bulkId, 200, headers: $auth);
+    checkModule(str_contains($submittedHtml, 'value="verify"') && !str_contains($submittedHtml, 'id="transaction-header-form"'), 'Submitted UI is editable or lacks verification');
+    request('/admin/transactions/'.$bulkId.'?revise=1', 409, headers: $auth);
+    request('/admin/transactions/'.$bulkId, 303, 'POST', http_build_query(['_operation' => 'return', 'note' => 'Perbaiki faktur dan jumlah']), $auth);
+    [$returnedHtml] = request('/admin/transactions/'.$bulkId, 200, headers: $auth);
+    checkModule(str_contains($returnedHtml, '>Revisi</a>') && !str_contains($returnedHtml, 'id="transaction-header-form"'), 'Returned detail must stay read-only with a revision button');
+    $revisionUrl = '/admin/transactions/'.$bulkId.'?revise=1';
+    [$revisionHtml] = request($revisionUrl, 200, headers: $auth);
+    checkModule(str_contains($revisionHtml, 'name="_operation" value="revision"') && str_contains($revisionHtml, 'transaction-pending-data') && !str_contains($revisionHtml, 'id="transaction-header-form"'), 'Revision must have one combined save form');
+    checkModule(str_contains($revisionHtml, 'btn btn-outline-info">Selesai Revisi'), 'Revision save color differs from Revisi');
+    $beforeRevision = apiAs('A', 'transactions/'.$bulkId, 200);
+    $retainedLine = $beforeRevision['items'][0];
+    $keptLine = ['line_id' => $retainedLine['id'], 'item_id' => $retainedLine['item_id'], 'unit_id' => $retainedLine['unit_id'], 'qty' => $retainedLine['qty'], 'batch_number' => $retainedLine['batch_number'], 'expiry_date' => $retainedLine['expiry_date'], 'stock_lot_id' => $retainedLine['stock_lot_id']];
+    $revisionInput = array_replace($bulkHeader, ['_operation' => 'revision', 'reference_number' => 'REVISED-BULK-'.$suffix, 'notes' => 'Header diperbaiki', 'items' => [$keptLine, array_replace($lineData, ['qty' => '4'])]]);
+    [$invalidRevision] = request($revisionUrl, 200, 'POST', http_build_query(array_replace($revisionInput, ['items' => [$keptLine, array_replace($lineData, ['qty' => '-1'])]])), $auth);
+    checkModule(str_contains($invalidRevision, 'Header diperbaiki') && str_contains($invalidRevision, 'transaction-pending-data'), 'Invalid revision lost input');
+    $unchanged = apiAs('A', 'transactions/'.$bulkId, 200);
+    checkModule($unchanged['reference_number'] === $beforeRevision['reference_number'] && $unchanged['items'] === $beforeRevision['items'], 'Invalid detail partially saved header or deleted old lines');
+    [, $revisionHeaders] = request($revisionUrl, 303, 'POST', http_build_query($revisionInput), $auth);
+    checkModule((bool) array_filter($revisionHeaders, static fn ($h) => str_starts_with($h, 'Location: ') && !str_contains($h, 'revise=')), 'Combined save did not return to read-only detail');
+    $revised = apiAs('A', 'transactions/'.$bulkId, 200);
+    checkModule(7 === $revised['status'] && 'REVISED-BULK-'.$suffix === $revised['reference_number'] && 2 === count($revised['items']), 'Combined revision failed');
+    $kept = array_values(array_filter($revised['items'], static fn ($line) => $line['id'] === $retainedLine['id']));
+    checkModule(1 === count($kept) && $kept[0]['conversion_factor'] === $retainedLine['conversion_factor'], 'Revision changed an unchanged line snapshot');
+    [$revisedDetail] = request('/admin/transactions/'.$bulkId, 200, headers: $auth);
+    checkModule(str_contains($revisedDetail, 'REVISED-BULK-'.$suffix) && !str_contains($revisedDetail, 'id="transaction-header-form"'), 'Revised detail not read-only');
+    request('/admin/transactions/'.$bulkId, 303, 'POST', http_build_query(['_operation' => 'submit']), $auth);
+    request($revisionUrl, 409, headers: $auth);
+    request('/admin/transactions/'.$bulkId, 303, 'POST', http_build_query(['_operation' => 'verify']), $auth);
+    [$verifiedHtml] = request('/admin/transactions/'.$bulkId, 200, headers: $auth);
+    checkModule(str_contains($verifiedHtml, 'Riwayat Transaksi') && str_contains($verifiedHtml, 'Verifikasi'), 'History not rendered');
+    $cancelTx = newTransaction('A', $transferData);
+    $cancelPath = 'transactions/'.$cancelTx['id'];
+    apiAs('A', $cancelPath.'/items', 201, 'POST', ['item_id' => $item->getId(), 'unit_id' => $unit->getId(), 'qty' => '1']);
+    apiAs('A', $cancelPath.'/submit', 200, 'POST');
+    apiAs('apprA', $cancelPath.'/approve', 200, 'POST');
+    apiAs('A', $cancelPath.'/cancel', 403, 'POST', ['note' => 'No authority']);
+    checkModule(4 === apiAs('apprA', $cancelPath.'/cancel', 200, 'POST', ['note' => 'Persetujuan dicabut'])['status'], 'Approver cannot cancel approved transfer');
+    apiAs('A', $cancelPath.'/send', 409, 'POST');
     echo "Transaction stock, permissions, snapshots, lifecycle and admin checks passed.\n";
 } finally {
     // Delete only test-owned records; never load fixtures or clear operational stock.

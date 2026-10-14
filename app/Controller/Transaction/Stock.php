@@ -15,6 +15,10 @@ final class Stock extends AbstractController
     #[Route('/transactions/stocks', name: self::class, methods: ['GET'], priority: 2)]
     public function __invoke(Request $request, TransactionService $service): JsonResponse
     {
-        return $this->json(['items' => $service->stocks($request->query->getString('organization_id') ?: null)]);
+        $organizationId = $request->query->getString('organization_id') ?: null;
+        $search = trim($request->query->getString('q'));
+        $stocks = $request->query->getBoolean('summary') ? $service->stockSummary($organizationId, $search) : $service->stocks($organizationId, $search);
+
+        return $this->json(['items' => $stocks]);
     }
 }

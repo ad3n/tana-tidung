@@ -1,8 +1,8 @@
 {% trans_default_domain 'pages' %}
 <div id="transaction-stock-error" class="alert alert-danger" role="alert" hidden></div>
 <form method="post" id="transaction-create-form" class="mb-4">
-    <div class="card">
-        <div class="card-header"><h4>{{ 'transaction.title_with_year'|trans({'%title%': page_title|trans, '%year%': active_year ? active_year.year : '-'}) }}</h4><small>{{ 'transaction.entry_help'|trans }}</small></div>
+    <div class="card transaction-invoice">
+        {% include 'transaction/invoice_header.html.twig' %}
         {% include 'transaction/header_fields.html.twig' %}
     </div>
     <div class="card"><div class="card-header"><h4>{{ 'transaction.items'|trans }}</h4></div>

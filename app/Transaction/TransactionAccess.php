@@ -47,6 +47,28 @@ final class TransactionAccess
         return strtoupper((string) $this->account()->getGroup()?->getCode()) === strtoupper($this->superAdmin);
     }
 
+    public function isApprover(): bool
+    {
+        return 'APPRV' === strtoupper((string) $this->account()->getGroup()?->getCode());
+    }
+
+    public function hasPermission(string $action): bool
+    {
+        return $this->authorization->authorize(new Permission('TRANSACTION', [$action]));
+    }
+
+    public function canReview(Transaction $transaction): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        $owner = TransactionType::RECEIPT === $transaction->getType() ? $transaction->getToOrganization() : $transaction->getFromOrganization();
+
+        return $this->isApprover() && $this->organization()?->getId() === $owner?->getId()
+            && $this->account()->getId() !== $transaction->getCreatedBy()->getId();
+    }
+
     public function organization(): ?Organization
     {
         if ($this->isAdmin()) {
@@ -80,6 +102,10 @@ final class TransactionAccess
 
     public function canOperate(Transaction $transaction, bool $receive = false): bool
     {
+        if ($this->isApprover() && !$this->isAdmin()) {
+            return false;
+        }
+
         $organization = $this->organization();
         $owner = $receive || TransactionType::RECEIPT === $transaction->getType() ? $transaction->getToOrganization() : $transaction->getFromOrganization();
 

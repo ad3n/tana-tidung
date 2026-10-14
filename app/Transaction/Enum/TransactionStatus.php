@@ -10,6 +10,9 @@ enum TransactionStatus: int
     case SENT = 2;
     case COMPLETED = 3;
     case CANCELLED = 4;
+    case SUBMITTED = 5;
+    case APPROVED = 6;
+    case RETURNED = 7;
 
     public function label(): string
     {

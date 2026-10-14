@@ -2,26 +2,18 @@
 {% trans_default_domain 'pages' %}
 {% block content %}
     {% set menu = convert_to_menu('transaction') %}
-    {% set editable = transaction.status.value == 1 and can_operate and is_granted('edit', menu) %}
+    {% set can_revise = transaction.status.value == 7 and can_operate and is_granted('edit', menu) %}
+    {% set editable = (transaction.status.value == 1 or (can_revise and revising)) and can_operate and is_granted('edit', menu) %}
     {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
     <div class="row">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header"><h4>{{ transaction.code }}</h4>{% include 'transaction/status.html.twig' %}</div>
-                {% if editable %}{% include 'transaction/header_form.html.twig' %}{% else %}
-                    <div class="card-body"><dl>
-                    {% for label, value in {
-                        type: transaction.type.label|trans, date: transaction.date|date('d-m-Y'), fiscal_year: transaction.fiscalYear.year,
-                        from: transaction.fromOrganization ? transaction.fromOrganization.name : '-', to: transaction.toOrganization ? transaction.toOrganization.name : '-',
-                        source: transaction.source ? transaction.source.name : '-', reference: transaction.referenceNumber, notes: transaction.notes
-                    } %}<dt>{{ (label == 'reference' and transaction.type.value != 1 ? 'transaction.reference_sk' : 'transaction.' ~ label)|trans }}</dt><dd>{{ value|default('-') }}</dd>{% endfor %}
-                    </dl></div>
-                {% endif %}
-            </div>
-        </div>
-        <div class="col-12">
-            <div class="card"><div class="card-header"><h4>{{ 'transaction.items'|trans }}</h4></div>
-                <div class="card-body table-responsive"><table class="table"><thead><tr><th>{{ 'transaction.item_code'|trans }}</th><th>{{ 'transaction.item'|trans }}</th><th>{{ 'transaction.qty'|trans }}</th><th>{{ 'transaction.base_qty'|trans }}</th><th>{{ 'transaction.batch_details'|trans }}</th>{% if editable %}<th></th>{% endif %}</tr></thead><tbody>
+            <div class="card transaction-invoice">
+                {% include 'transaction/invoice_header.html.twig' %}
+                {% include 'transaction/invoice_details.html.twig' %}
+                <input type="hidden" id="transaction-type" value="{{ transaction.type.value }}">
+                <input type="hidden" id="transaction-from" value="{{ transaction.fromOrganization ? transaction.fromOrganization.id : '' }}">
+                <input type="hidden" id="transaction-date" value="{{ transaction.date|date('Y-m-d') }}">
+                <div class="card-body table-responsive transaction-invoice-items"><table class="table mb-0"><thead><tr><th>{{ 'transaction.item_code'|trans }}</th><th>{{ 'transaction.item'|trans }}</th><th>{{ 'transaction.qty'|trans }}</th><th>{{ 'transaction.base_qty'|trans }}</th><th>{{ 'transaction.batch_details'|trans }}</th>{% if editable %}<th></th>{% endif %}</tr></thead><tbody>
                 {% for line in data.items %}<tr>
                     <td>{{ line.item_code }}</td><td>{{ line.item_name }}</td><td>{{ line.qty|number_format(2, ',', '.') }} {{ line.unit_name }}{% if line.unit_id != line.base_unit_id %} ({{ line.conversion_factor|number_format(2, ',', '.')|trim('0', 'right')|trim(',', 'right') }} {{ line.base_unit_code }}){% endif %}</td><td>{{ line.base_qty|number_format(2, ',', '.') }} {{ line.base_unit_name }}</td>
                     <td>
@@ -45,14 +37,52 @@
                 <div>{% if editable %}<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#transaction-item-modal">{{ 'transaction.add_item'|trans }}</button>{% endif %}</div>
                 <div class="transaction-action-buttons">
                     <a class="btn btn-outline-secondary" href="{{ path('KejawenLab\\Application\\Admin\\Controller\\Transaction\\Listing_' ~ {1: 'receipt', 2: 'transfer', 3: 'disposal'}[transaction.type.value]) }}">{{ 'transaction.back'|trans }}</a>
-                    {% set actions = [] %}
-                    {% if editable %}{% set actions = [transaction.type.value == 2 ? 'send' : 'post'] %}{% endif %}
-                    {% if transaction.status.value == 2 and can_receive and is_granted('edit', menu) %}{% set actions = ['receive'] %}{% endif %}
-                    {% if transaction.status.value == 1 and can_operate and is_granted('delete', menu) %}{% set actions = actions|merge(['cancel']) %}{% endif %}
-                    {% for action in actions %}<form method="post" class="transaction-action"><input type="hidden" name="_operation" value="{{ action }}"><button type="submit" class="btn btn-outline-{{ action == 'cancel' ? 'danger' : 'primary' }}">{{ ('transaction.action.' ~ action)|trans }}</button></form>{% endfor %}
+                    {% if can_revise and not revising %}
+                        <a class="btn btn-outline-info" href="{{ path('KejawenLab\\Application\\Admin\\Controller\\Transaction\\Get', {id: transaction.id, revise: 1}) }}">{{ 'transaction.revise'|trans }}</a>
+                    {% endif %}
+                    {% for action in (revising ? [] : data.available_actions) %}
+                        {% if action in ['return', 'cancel'] %}
+                            <button type="button" class="btn btn-outline-{{ action == 'return' ? 'warning' : 'danger' }}" data-toggle="modal" data-target="#transaction-{{ action }}-modal">{{ ('transaction.action.' ~ action)|trans }}</button>
+                        {% else %}
+                            <form method="post" class="transaction-action">
+                                <input type="hidden" name="_operation" value="{{ action }}">
+                                <button type="submit" class="btn btn-outline-primary">{{ ('transaction.action.' ~ action)|trans }}</button>
+                            </form>
+                        {% endif %}
+                    {% endfor %}
                 </div>
             </div>
         </div>
     </div>
+    {% for action in data.available_actions %}
+        {% if action in ['return', 'cancel'] %}
+            <div class="modal fade" id="transaction-{{ action }}-modal" tabindex="-1" role="dialog" aria-labelledby="transaction-{{ action }}-title" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content">
+                    <form method="post">
+                        <input type="hidden" name="_operation" value="{{ action }}">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="transaction-{{ action }}-title">{{ ('transaction.action.' ~ action)|trans }}</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="{{ 'transaction.back'|trans }}"><span aria-hidden="true">&times;</span></button>
+                        </div>
+                        <div class="modal-body">
+                            <label for="reason-{{ action }}" class="required">{{ 'transaction.review_note'|trans }}</label>
+                            <textarea id="reason-{{ action }}" name="note" class="form-control" rows="3" required maxlength="10000"></textarea>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">{{ 'transaction.back'|trans }}</button>
+                            <button type="submit" class="btn btn-{{ action == 'return' ? 'warning' : 'danger' }}">{{ ('transaction.action.' ~ action)|trans }}</button>
+                        </div>
+                    </form>
+                </div></div>
+            </div>
+        {% endif %}
+    {% endfor %}
+    {% if data.workflow_history is not empty %}
+        <div class="card"><div class="card-header">{{ 'transaction.history'|trans }}</div><div class="card-body table-responsive">
+            <table class="table"><thead><tr><th>{{ 'transaction.history_time'|trans }}</th><th>{{ 'transaction.history_actor'|trans }}</th><th>{{ 'transaction.actions'|trans }}</th><th>{{ 'transaction.review_note'|trans }}</th></tr></thead><tbody>
+            {% for entry in data.workflow_history %}<tr><td>{{ entry.at|date('d-m-Y H:i') }}</td><td>{{ entry.actor_name }}</td><td>{{ ('transaction.action.' ~ entry.action)|trans }}</td><td>{{ entry.note|default('-') }}</td></tr>{% endfor %}
+            </tbody></table>
+        </div></div>
+    {% endif %}
     {% if editable %}{% include 'transaction/item_modal.html.twig' %}{% endif %}
 {% endblock %}

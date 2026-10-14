@@ -28,10 +28,12 @@ final class InstallTransactions extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->em->wrapInTransaction(function (): void {
+            $this->em->getConnection()->executeStatement("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS workflow_history JSON NOT NULL DEFAULT '[]'");
+            $this->em->getConnection()->executeStatement('ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transaction_status_valid');
             $checks = [
                 'transactions' => [
                     'transaction_type_valid' => 'type IN (1,2,3)',
-                    'transaction_status_valid' => 'status IN (1,2,3,4) AND (status <> 2 OR type = 2)',
+                    'transaction_status_valid' => 'status IN (1,2,3,4,5,6,7) AND (status <> 2 OR type = 2) AND (status <> 6 OR type <> 1)',
                     'transaction_organizations_valid' => '(type = 1 AND from_organization_id IS NULL AND to_organization_id IS NOT NULL AND source_id IS NOT NULL) OR (type = 2 AND from_organization_id IS NOT NULL AND to_organization_id IS NOT NULL AND from_organization_id <> to_organization_id AND source_id IS NULL) OR (type = 3 AND from_organization_id IS NOT NULL AND to_organization_id IS NULL AND source_id IS NULL AND notes IS NOT NULL AND LENGTH(TRIM(notes)) > 0)',
                 ],
                 'transaction_items' => ['transaction_quantities_positive' => 'qty > 0 AND conversion_factor > 0 AND base_qty > 0 AND base_qty = qty * conversion_factor'],
@@ -59,7 +61,7 @@ final class InstallTransactions extends Command
 
             $menu->setRouteName('#');
             $children = [];
-            foreach (['receipt' => 'Penerimaan', 'transfer' => 'Transfer', 'disposal' => 'Pengeluaran', 'receipt_list' => 'Daftar Penerimaan', 'disposal_list' => 'Daftar Pengeluaran', 'transfer_list' => 'Daftar Transfer', 'stock' => 'Stok Barang'] as $key => $name) {
+            foreach (['receipt' => 'Penerimaan', 'transfer' => 'Transfer', 'disposal' => 'Pengeluaran', 'receipt_list' => 'Daftar Penerimaan', 'transfer_list' => 'Daftar Transfer', 'disposal_list' => 'Daftar Pengeluaran', 'stock' => 'Stok Barang'] as $key => $name) {
                 $code = 'TRANSACTION_'.strtoupper($key);
                 $child = $this->em->getRepository(Menu::class)->findOneBy(['code' => $code]);
                 if (!$child) {

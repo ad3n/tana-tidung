@@ -75,6 +75,9 @@ final class TransactionService
     public function saveDraft(array $input, ?string $id = null): Transaction
     {
         $this->access->requirePermission($id ? 'edit' : 'add');
+        if ($this->access->isApprover() && !$this->access->isAdmin()) {
+            throw new AccessDeniedHttpException('Approver hanya dapat memeriksa pengajuan transaksi.');
+        }
 
         return $this->locked(function () use ($input, $id): Transaction {
             $this->keys($input, ['type', 'date', 'from_organization_id', 'to_organization_id', 'source_id', 'reference_number', 'notes']);
@@ -198,6 +201,80 @@ final class TransactionService
         });
     }
 
+    public function revise(string $id, array $input): Transaction
+    {
+        $this->access->requirePermission('edit');
+
+        return $this->locked(function () use ($id, $input): Transaction {
+            $transaction = $this->get($id);
+            $this->em->refresh($transaction);
+            $this->draftOwner($transaction);
+            if (Status::RETURNED !== $transaction->getStatus()) {
+                throw new ConflictHttpException('Revisi hanya tersedia untuk transaksi Dikembalikan.');
+            }
+
+            $lines = $input['items'] ?? [];
+            unset($input['items']);
+            if (!is_array($lines) || count($lines) > 100) {
+                throw new BadRequestHttpException('Detail barang tidak valid atau melebihi 100 baris.');
+            }
+
+            $existing = [];
+            foreach ($this->lines($transaction) as $line) {
+                $existing[$line->getId()] = $line;
+            }
+
+            $retained = [];
+            $added = [];
+            foreach ($lines as $line) {
+                if (!is_array($line)) {
+                    throw new BadRequestHttpException('Format detail barang tidak valid.');
+                }
+
+                $lineId = $line['line_id'] ?? null;
+                unset($line['line_id']);
+                $this->keys($line, ['item_id', 'unit_id', 'qty', 'batch_number', 'expiry_date', 'stock_lot_id']);
+                if (null !== $lineId) {
+                    if (!is_string($lineId) || !isset($existing[$lineId]) || isset($retained[$lineId])) {
+                        throw new BadRequestHttpException('Referensi detail barang tidak valid.');
+                    }
+
+                    $old = $existing[$lineId];
+                    $original = [
+                        'item_id' => $old->getItem()->getId(), 'unit_id' => $old->getUnit()->getId(),
+                        'qty' => $old->getQty(), 'batch_number' => $old->getBatchNumber(),
+                        'expiry_date' => $old->getExpiryDate()?->format('Y-m-d'),
+                        'stock_lot_id' => $old->getSelectedLot()?->getId(),
+                    ];
+                    foreach ($original as $key => $value) {
+                        if ($this->text($line, $key) !== trim((string) $value)) {
+                            throw new BadRequestHttpException('Hapus dan tambahkan kembali baris yang perlu diubah.');
+                        }
+                    }
+
+                    $retained[$lineId] = true;
+                } else {
+                    $added[] = $line;
+                }
+            }
+
+            foreach ($existing as $lineId => $line) {
+                if (!isset($retained[$lineId])) {
+                    $this->em->remove($line);
+                }
+            }
+
+            $this->em->flush();
+            $input['type'] = (string) $transaction->getType()->value;
+            $this->saveDraft($input, $id);
+            foreach ($added as $line) {
+                $this->addLine($id, $line);
+            }
+
+            return $transaction;
+        });
+    }
+
     public function addLine(string $id, array $input): void
     {
         $this->access->requirePermission('edit');
@@ -300,34 +377,70 @@ final class TransactionService
         });
     }
 
-    public function transition(string $id, string $action): void
+    public function availableActions(Transaction $transaction): array
     {
-        $this->access->requirePermission('cancel' === $action ? 'delete' : 'edit');
-        $this->locked(function () use ($id, $action): void {
+        $actions = match ($transaction->getStatus()) {
+            Status::DRAFT, Status::RETURNED => ['submit', 'cancel'],
+            Status::SUBMITTED => [Type::RECEIPT === $transaction->getType() ? 'verify' : 'approve', 'return', 'cancel'],
+            Status::APPROVED => [Type::TRANSFER === $transaction->getType() ? 'send' : 'post', 'cancel'],
+            Status::SENT => ['receive'],
+            default => [],
+        };
+
+        return array_values(array_filter($actions, fn (string $action): bool => $this->canPerform($transaction, $action)));
+    }
+
+    private function canPerform(Transaction $transaction, string $action): bool
+    {
+        $review = in_array($action, ['verify', 'approve', 'return'], true)
+            || ('cancel' === $action && Status::APPROVED === $transaction->getStatus());
+        if (!$this->access->hasPermission('cancel' === $action && !$review ? 'delete' : 'edit')) {
+            return false;
+        }
+
+        if ($review) {
+            return $this->access->canReview($transaction);
+        }
+
+        if ('cancel' === $action && !$this->access->isAdmin() && $transaction->getCreatedBy()->getId() !== $this->access->account()->getId()) {
+            return false;
+        }
+
+        return $this->access->canOperate($transaction, 'receive' === $action);
+    }
+
+    public function transition(string $id, string $action, ?string $note = null): void
+    {
+        $this->access->requirePermission('view');
+        $this->locked(function () use ($id, $action, $note): void {
             $transaction = $this->get($id);
             $this->em->refresh($transaction);
-            if (!$this->access->canOperate($transaction, 'receive' === $action)) {
-                throw new AccessDeniedHttpException();
+            if (!$this->canPerform($transaction, $action)) {
+                throw new AccessDeniedHttpException('Anda tidak berwenang melakukan tindakan ini.');
             }
 
-            $status = $transaction->getStatus();
-            if ('cancel' === $action) {
-                if (Status::DRAFT !== $status) {
-                    throw new ConflictHttpException('Hanya draft yang dapat dibatalkan.');
+            if (!in_array($action, $this->availableActions($transaction), true)) {
+                throw new ConflictHttpException('Perpindahan status tidak diperbolehkan.');
+            }
+
+            $note = trim((string) $note);
+            if (mb_strlen($note) > 10000 || (in_array($action, ['return', 'cancel'], true) && '' === $note)) {
+                throw new BadRequestHttpException('Alasan pengembalian atau pembatalan wajib diisi, maksimal 10000 karakter.');
+            }
+
+            if (in_array($action, ['cancel', 'return'], true)) {
+                $transaction->setStatus('cancel' === $action ? Status::CANCELLED : Status::RETURNED);
+                if ('cancel' === $action) {
+                    $transaction->setCancelledAt(new DateTimeImmutable());
+                    $transaction->setCancelledBy($this->access->account());
                 }
 
-                $transaction->setStatus(Status::CANCELLED);
-                $transaction->setCancelledAt(new DateTimeImmutable());
-                $transaction->setCancelledBy($this->access->account());
+                $transaction->recordTransition($action, $this->access->account(), $note);
 
                 return;
             }
 
             if ('receive' === $action) {
-                if (Type::TRANSFER !== $transaction->getType() || Status::SENT !== $status) {
-                    throw new ConflictHttpException('Hanya transfer Dikirim yang dapat diterima.');
-                }
-
                 foreach ($this->lines($transaction) as $line) {
                     foreach ($this->em->getRepository(TransactionItemAllocation::class)->findBy(['transactionItem' => $line]) as $allocation) {
                         $this->movement($allocation, $transaction->getFromOrganization(), 'IN_TRANSIT', 'receive', '-'.$allocation->getBaseQty());
@@ -338,12 +451,9 @@ final class TransactionService
                 $transaction->setStatus(Status::COMPLETED);
                 $transaction->setReceivedBy($this->access->account());
                 $transaction->setReceivedAt(new DateTimeImmutable());
+                $transaction->recordTransition($action, $this->access->account());
 
                 return;
-            }
-
-            if (Status::DRAFT !== $status || !in_array($action, ['post', 'send'], true) || ((Type::TRANSFER === $transaction->getType()) !== ('send' === $action))) {
-                throw new ConflictHttpException('Perpindahan status tidak diperbolehkan.');
             }
 
             $this->em->refresh($transaction->getFiscalYear());
@@ -368,6 +478,14 @@ final class TransactionService
             $lines = $this->lines($transaction);
             if (!$lines) {
                 throw new BadRequestHttpException('Tambahkan minimal satu barang sebelum memproses transaksi.');
+            }
+
+            if (in_array($action, ['submit', 'approve'], true)) {
+                $this->validateDraftStock($transaction);
+                $transaction->setStatus('submit' === $action ? Status::SUBMITTED : Status::APPROVED);
+                $transaction->recordTransition($action, $this->access->account());
+
+                return;
             }
 
             usort($lines, static fn ($a, $b) => (int) (null !== $b->getSelectedLot()) <=> (int) (null !== $a->getSelectedLot()));
@@ -422,6 +540,7 @@ final class TransactionService
             $transaction->setStatus('send' === $action ? Status::SENT : Status::COMPLETED);
             $transaction->setPostedBy($this->access->account());
             $transaction->setPostedAt(new DateTimeImmutable());
+            $transaction->recordTransition($action, $this->access->account());
         });
     }
 
@@ -510,7 +629,7 @@ final class TransactionService
         return $this->em->getConnection()->fetchAllAssociative($sql, $params);
     }
 
-    public function stocks(?string $organizationId = null): array
+    public function stocks(?string $organizationId = null, string $search = ''): array
     {
         $this->access->requirePermission('view');
         $org = $this->access->organization();
@@ -523,14 +642,54 @@ final class TransactionService
             $this->reference(Organization::class, $organizationId);
         }
 
-        $sql = 'SELECT o.id AS organization_id, o.name AS organization, i.id AS item_id, i.name AS item, u.name AS unit, l.id AS stock_lot_id, l.batch_number, l.expiry_date, m.location, SUM(m.quantity_delta) AS qty FROM stock_movements m JOIN stock_lots l ON l.id=m.stock_lot_id JOIN items i ON i.id=l.item_id JOIN transaction_items ti ON ti.id=l.receipt_item_id JOIN units u ON u.id=ti.base_unit_id JOIN organizations o ON o.id=m.organization_id';
+        $sql = 'SELECT o.id AS organization_id, o.name AS organization, i.id AS item_id, i.name AS item, i.code AS item_code, u.id AS unit_id, u.name AS unit, l.id AS stock_lot_id, l.batch_number, l.expiry_date, m.location, SUM(m.quantity_delta) AS qty FROM stock_movements m JOIN stock_lots l ON l.id=m.stock_lot_id JOIN items i ON i.id=l.item_id JOIN transaction_items ti ON ti.id=l.receipt_item_id JOIN units u ON u.id=ti.base_unit_id JOIN organizations o ON o.id=m.organization_id';
         $params = [];
+        $conditions = [];
         if ($organizationId) {
-            $sql .= ' WHERE o.id=:org';
+            $conditions[] = 'o.id=:org';
             $params['org'] = $organizationId;
         }
 
-        return $this->em->getConnection()->fetchAllAssociative($sql.' GROUP BY o.id, i.id, u.name, l.id, m.location HAVING SUM(m.quantity_delta)<>0 ORDER BY o.name, i.name, l.expiry_date', $params);
+        if ('' !== trim($search)) {
+            $conditions[] = '(STRPOS(LOWER(i.name), LOWER(:search)) > 0 OR STRPOS(LOWER(i.code), LOWER(:search)) > 0)';
+            $params['search'] = trim($search);
+        }
+
+        if ($conditions) {
+            $sql .= ' WHERE '.implode(' AND ', $conditions);
+        }
+
+        return $this->em->getConnection()->fetchAllAssociative($sql.' GROUP BY o.id, i.id, u.id, l.id, m.location HAVING SUM(m.quantity_delta)<>0 ORDER BY i.name, i.id, o.name, l.expiry_date NULLS LAST, l.id, m.location', $params);
+    }
+
+    public function stockSummary(?string $organizationId = null, string $search = ''): array
+    {
+        $summary = [];
+        foreach ($this->stocks($organizationId, $search) as $stock) {
+            $key = $stock['item_id'].'_'.$stock['unit_id'];
+            if (!isset($summary[$key])) {
+                $summary[$key] = [
+                    'item_id' => $stock['item_id'], 'item_code' => $stock['item_code'],
+                    'item' => $stock['item'], 'unit_id' => $stock['unit_id'], 'unit' => $stock['unit'],
+                    'available' => '0.000000', 'in_transit' => '0.000000', 'total' => '0.000000', 'batches' => [],
+                ];
+            }
+
+            $column = 'AVAILABLE' === $stock['location'] ? 'available' : 'in_transit';
+            $summary[$key][$column] = (string) BigDecimal::of($summary[$key][$column])->plus($stock['qty']);
+            $summary[$key]['total'] = (string) BigDecimal::of($summary[$key]['total'])->plus($stock['qty']);
+            $summary[$key]['batches'][] = $stock;
+        }
+
+        return array_values($summary);
+    }
+
+    public function stockOrganizations(): array
+    {
+        $this->access->requirePermission('view');
+        $own = $this->access->organization();
+
+        return $own ? [$own] : $this->em->getRepository(Organization::class)->findBy([], ['name' => 'ASC']);
     }
 
     public function choices(): array
@@ -575,8 +734,8 @@ final class TransactionService
 
     private function draftOwner(Transaction $transaction): void
     {
-        if (Status::DRAFT !== $transaction->getStatus()) {
-            throw new ConflictHttpException('Hanya draft yang dapat diubah.');
+        if (!in_array($transaction->getStatus(), [Status::DRAFT, Status::RETURNED], true)) {
+            throw new ConflictHttpException('Hanya draft atau pengajuan yang dikembalikan dapat diubah.');
         }
 
         if (!$this->access->canOperate($transaction)) {

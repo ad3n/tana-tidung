@@ -91,6 +91,23 @@ class Transaction
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?DateTimeImmutable $cancelledAt = null;
 
+    #[ORM\Column(type: 'json')]
+    private array $workflowHistory = [];
+
+    public function getWorkflowHistory(): array
+    {
+        return $this->workflowHistory;
+    }
+
+    public function recordTransition(string $action, User $actor, ?string $note = null): void
+    {
+        $this->workflowHistory[] = [
+            'action' => $action, 'status' => $this->status->value,
+            'actor_id' => $actor->getId(), 'actor_name' => $actor->getFullName(),
+            'at' => (new DateTimeImmutable())->format(DATE_ATOM), 'note' => $note,
+        ];
+    }
+
     public function getCode(): string
     {
         return $this->code;

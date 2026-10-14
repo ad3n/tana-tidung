@@ -258,3 +258,27 @@ transaction.list.3: Daftar Pengeluaran
 transaction.reference_sk: No SK
 transaction.search_sk: Cari nomor transaksi atau SK
 transaction.title_with_year: '%title% - Tahun Anggaran %year%'
+
+transaction.status.5: Diajukan
+transaction.status.6: Disetujui
+transaction.status.7: Dikembalikan
+transaction.action.submit: Ajukan
+transaction.action.verify: Verifikasi
+transaction.action.approve: Setujui
+transaction.action.return: Kembalikan
+transaction.review_note: Alasan
+transaction.history: Riwayat Transaksi
+transaction.history_time: Waktu
+transaction.history_actor: Pengguna
+
+transaction.invoice.government: Pemerintah Kabupaten Tana Tidung
+transaction.invoice.auto_number: Otomatis setelah disimpan
+
+transaction.revise: Revisi
+transaction.revision_done: Selesai Revisi
+transaction.stock_search: Nama atau Kode Barang
+transaction.stock_search_placeholder: Cari nama atau kode barang
+transaction.stock_search_action: Cari
+transaction.all_organizations: Semua SKPD/OPD
+transaction.total_stock: Total Stok
+transaction.stock_batch_action: Detail Batch

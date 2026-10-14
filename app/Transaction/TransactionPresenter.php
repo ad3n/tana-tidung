@@ -25,6 +25,8 @@ final class TransactionPresenter
             'from_organization_id' => $transaction->getFromOrganization()?->getId(),
             'to_organization_id' => $transaction->getToOrganization()?->getId(),
             'reference_number' => $transaction->getReferenceNumber(), 'notes' => $transaction->getNotes(),
+            'workflow_history' => $transaction->getWorkflowHistory(),
+            'available_actions' => $this->service->availableActions($transaction),
             'created_by' => $transaction->getCreatedBy()->getId(),
             'created_at' => $transaction->getCreatedAt()->format(DATE_ATOM),
             'posted_by' => $transaction->getPostedBy()?->getId(), 'posted_at' => $transaction->getPostedAt()?->format(DATE_ATOM),

@@ -88,7 +88,7 @@
                         </div>
                         <div class="card-footer">
                             <button type="submit" class="btn btn-outline-primary">{{- 'sas.form.action.submit' | trans({}, 'forms') -}}</button>
-                            <button type="reset" class="btn btn-outline-secondary ml-1">{{- 'sas.form.action.cancel' | trans({}, 'forms') -}}</button>
+                            <a href="{{- path('KejawenLab\\ApiSkeleton\\Admin\\Controller\\ApiClient\\Main', {userId: user_id}) -}}" class="btn btn-outline-secondary ml-1">{{- 'sas.form.action.cancel' | trans({}, 'forms') -}}</a>
                         </div>
                     </form>
                 </div>

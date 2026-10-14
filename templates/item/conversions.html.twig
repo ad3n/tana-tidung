@@ -8,12 +8,6 @@
     <script>
         $(document).ready(function () {
             $('.select2').select2({theme: 'bootstrap4', width: '100%'});
-            $('form[name="item_unit_conversion"]').on('reset', function () {
-                const form = this;
-                setTimeout(function () {
-                    $(form).find('.select2').trigger('change');
-                }, 0);
-            });
         });
     </script>
 {% endblock %}
@@ -67,7 +61,7 @@
                         <div class="card-body">
                             {{ form_widget(form) }}
                         </div>
-                        <div class="card-footer"><button type="submit" class="btn btn-outline-primary">{{ 'sas.page.item_conversion.save' | trans({}, 'pages') }}</button><button type="reset" class="btn btn-outline-secondary ml-1">{{ 'sas.page.item_conversion.cancel' | trans({}, 'pages') }}</button></div>
+                        <div class="card-footer"><button type="submit" class="btn btn-outline-primary">{{ 'sas.page.item_conversion.save' | trans({}, 'pages') }}</button><a href="{{ path('KejawenLab\\Application\\Admin\\Controller\\Item\\Conversions', {id: data.id}) }}" class="btn btn-outline-secondary ml-1">{{ 'sas.page.item_conversion.cancel' | trans({}, 'pages') }}</a></div>
                         {{ form_end(form) }}
                     {% else %}<div class="card-body">{{ 'sas.page.item_conversion.missing_base' | trans({}, 'pages') }}</div>{% endif %}
                 </div>

@@ -1,0 +1,13 @@
+{% trans_default_domain 'pages' %}
+<div class="card-body transaction-invoice-details">
+    <dl class="transaction-invoice-grid">
+        {% if transaction.fromOrganization %}<div><dt>{{ 'transaction.from'|trans }}</dt><dd>{{ transaction.fromOrganization.name }}</dd></div>{% endif %}
+        {% if transaction.toOrganization %}<div><dt>{{ 'transaction.to'|trans }}</dt><dd>{{ transaction.toOrganization.name }}</dd></div>{% endif %}
+        {% if transaction.source %}<div><dt>{{ 'transaction.source'|trans }}</dt><dd>{{ transaction.source.name }}</dd></div>{% endif %}
+        <div><dt>{{ (transaction.type.value == 1 ? 'transaction.reference' : 'transaction.reference_sk')|trans }}</dt><dd>{{ transaction.referenceNumber|default('-') }}</dd></div>
+    </dl>
+    <dl class="transaction-invoice-notes-row">
+        <div class="transaction-invoice-note-text"><dt>{{ 'transaction.notes'|trans }}</dt><dd>{{ transaction.notes|default('-') }}</dd></div>
+        <div class="transaction-invoice-note-status"><dt>{{ 'transaction.status'|trans }}</dt><dd>{% include 'transaction/status.html.twig' %}</dd></div>
+    </dl>
+</div>

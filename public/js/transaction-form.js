@@ -102,7 +102,7 @@ $(function () {
             const action = $('<td>').appendTo(tr);
             $('<button type="button" class="btn btn-sm btn-outline-danger">').text(messages.remove).on('click', function () { pending.splice(index, 1); renderPending(); }).appendTo(action);
             Object.entries(line).forEach(([key, value]) => {
-                if (['item_id', 'unit_id', 'qty', 'batch_number', 'expiry_date', 'stock_lot_id'].includes(key)) $('<input type="hidden">').attr('name', 'items[' + index + '][' + key + ']').val(value).appendTo(action);
+                if (['line_id', 'item_id', 'unit_id', 'qty', 'batch_number', 'expiry_date', 'stock_lot_id'].includes(key)) $('<input type="hidden">').attr('name', 'items[' + index + '][' + key + ']').val(value).appendTo(action);
             });
             tbody.append(tr);
         });

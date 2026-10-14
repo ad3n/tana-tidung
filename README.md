@@ -750,18 +750,35 @@ transfer/pengeluaran; tanggal memakai tanggal transaksi. Lima digit acak diperik
 agar nomor unik. Nomor tetap saat draft diedit dan nomor transaksi lama tidak diubah.
 
 - `TransactionType` adalah backed enum integer: `RECEIPT=1`, `TRANSFER=2`, `DISPOSAL=3`.
-- `TransactionStatus`: `DRAFT=1`, `SENT=2`, `COMPLETED=3`, `CANCELLED=4`.
+- `TransactionStatus`: `DRAFT=1`, `SENT=2`, `COMPLETED=3`, `CANCELLED=4`,
+  `SUBMITTED=5`, `APPROVED=6`, `RETURNED=7`. Nilai lama tetap dipertahankan.
 - Doctrine menyimpan keduanya sebagai SMALLINT. Command instalasi menambahkan
   CHECK constraint, termasuk bentuk asal/tujuan/sumber yang sesuai jenis transaksi.
-- Draft penerimaan/pengeluaran menjadi Selesai melalui tombol Selesaikan.
-  Transfer: Draft → Dikirim → Selesai melalui tombol Kirim dan Terima.
-- Hanya Draft yang boleh diedit/dibatalkan. Dokumen yang sudah dibukukan tidak
+- Penerimaan: Draft → Diajukan → Selesai melalui Ajukan dan Verifikasi.
+- Transfer: Draft → Diajukan → Disetujui → Dikirim → Selesai.
+- Pengeluaran: Draft → Diajukan → Disetujui → Selesai.
+- Pengajuan dapat dikembalikan dengan alasan, diperbaiki, kemudian diajukan ulang.
+  Detail transaksi tetap berupa teks. Tombol Revisi muncul untuk pengurus berhak
+  Edit pada status Dikembalikan; mode `?revise=1` membuka header dan detail barang.
+  Selesai Revisi menyimpan header dan seluruh detail secara atomik, kemudian kembali
+  ke detail dengan status Dikembalikan. Detail dapat diganti dengan menghapus baris
+  dan menambahkan kembali sebelum disimpan. Baris yang tidak diubah mempertahankan
+  snapshot konversinya. Jika validasi gagal, seluruh data lama tetap utuh.
+  Ajukan pada detail mengirim pengajuan ulang.
+  Hanya Draft dan Dikembalikan yang dapat diedit. Pembuat dapat membatalkan Draft,
+  Dikembalikan, atau Diajukan dengan hak Delete; pembatalan Disetujui dilakukan
+  approver dengan hak Edit. Super admin dapat membatalkan semua transaksi sebelum
+  pergerakan stok. Alasan pengembalian/pembatalan wajib diisi.
+- Riwayat tindakan, status, ID/nama pelaku, waktu, dan alasan disimpan di
+  `workflow_history` dan ditampilkan pada detail transaksi. Transaksi lama memiliki
+  riwayat kosong; status serta mutasi yang sudah ada dipertahankan.
+- Dokumen yang sudah dibukukan tidak
   dapat dihapus atau diubah. Pengembalian setelah penerimaan dibuat sebagai
   transfer balik dengan `reference_number`; tidak ada relasi retur khusus.
   Pembatalan pengiriman, retur pemasok, koreksi pembukuan, dan penerimaan parsial
   belum merupakan aksi yang tersedia.
 - Pengeluaran akhir wajib memiliki `notes` yang tidak hanya berisi spasi.
-  Tidak ada kolom reason atau master alasan.
+  Alasan keputusan workflow terpisah dari catatan transaksi, disimpan di riwayat.
 - Tahun anggaran diisi server dari tahun aktif; tanggal harus berada dalam
   tahun tersebut. Penerimaan transfer yang sudah dikirim tetap boleh diselesaikan
   setelah pergantian tahun. Stok tidak direset saat tahun anggaran berganti.
@@ -781,11 +798,24 @@ Super admin dikenali dari `APP_SUPER_ADMIN`, dapat memilih organisasi. Pengguna
 lain harus memiliki tepat satu Employee dengan organisasi aktif. Asal pengeluaran
 atau tujuan penerimaan otomatis organisasi pengguna; ID organisasi yang dimanipulasi
 akan ditolak. Pengguna hanya melihat stok sendiri dan transaksi yang melibatkan
-organisasinya. Hanya tujuan transfer atau super admin yang bisa menerima.
+organisasinya. Pengurus Barang tujuan transfer atau super admin dapat menerima.
+
+Group `APPRV` memverifikasi penerimaan milik organisasinya dan menyetujui pengeluaran/
+transfer dari organisasinya. Approver tujuan transfer tidak dapat menyetujui
+pengeluaran pihak asal. APPRV tidak dapat membuat atau mengubah isi transaksi,
+mengajukan, mengirim, maupun mengonfirmasi penerimaan transfer. Pembuat transaksi
+tidak dapat menyetujui sendiri jika kemudian menjadi APPRV. Super admin mendapat
+pengecualian untuk memverifikasi/menyetujui semua organisasi, termasuk transaksi
+yang dibuatnya sendiri, namun tetap mengikuti urutan status.
+
+Pengajuan dan persetujuan tidak mengubah atau mencadangkan stok. Stok penerimaan
+bertambah saat verifikasi; pengeluaran berkurang saat Selesaikan; transfer masuk
+Dalam Perjalanan saat Kirim. Saldo diperiksa kembali saat pengajuan, persetujuan,
+dan pembukuan untuk mencegah kelebihan pengeluaran.
 
 Hak menu TRANSACTION tetap diperlukan: View untuk daftar/detail/stok, Add untuk
-membuat draft, Edit untuk menyunting detail/mengirim/membukukan/menerima, Delete
-untuk membatalkan draft. Data master yang sudah direferensikan transaksi tidak
+membuat draft, Edit untuk menyunting/mengajukan/memeriksa/mengirim/membukukan/menerima,
+Delete untuk pembatalan oleh pembuat. Pembatasan peran dan status tetap berlaku di API. Data master yang sudah direferensikan transaksi tidak
 boleh dihapus agar riwayat tetap dapat dibaca. Berikan View/Add/Edit/Delete yang sesuai melalui Hak Akses
 Group. Instalasi hanya mengaktifkan semua hak secara otomatis untuk super admin;
 grup lain tidak diberi akses baru tanpa pengaturan administrator.
@@ -798,7 +828,8 @@ docker compose exec app php bin/console doctrine:schema:update --force --no-inte
 docker compose exec app php bin/console app:transactions:install
 ```
 
-Command terakhir idempotent: membuat menu/permission yang belum ada dan constraint,
+Command terakhir idempotent: menambahkan kolom riwayat jika belum ada, memperbarui
+constraint status, serta membuat menu/permission yang belum ada,
 tanpa menimpa izin grup yang sudah dikonfigurasi. Jangan memuat ulang seluruh fixtures
 pada database yang sudah berisi data.
 
@@ -815,10 +846,14 @@ Nilai `type` dan `status` pada respons JSON adalah integer; jumlah adalah string
 | PUT | `/api/transactions/{id}` | Ganti isi header draft; jenis tetap |
 | POST | `/api/transactions/{id}/items` | Tambah detail |
 | DELETE | `/api/transactions/{id}/items/{lineId}` | Hapus detail draft |
-| POST | `/api/transactions/{id}/post` | Selesaikan penerimaan/pengeluaran |
-| POST | `/api/transactions/{id}/send` | Kirim transfer |
+| POST | `/api/transactions/{id}/submit` | Ajukan draft atau perbaikan |
+| POST | `/api/transactions/{id}/verify` | Verifikasi penerimaan dan bukukan stok |
+| POST | `/api/transactions/{id}/approve` | Setujui transfer/pengeluaran |
+| POST | `/api/transactions/{id}/return` | Kembalikan pengajuan; JSON `note` wajib |
+| POST | `/api/transactions/{id}/post` | Selesaikan pengeluaran yang disetujui |
+| POST | `/api/transactions/{id}/send` | Kirim transfer yang disetujui |
 | POST | `/api/transactions/{id}/receive` | Terima seluruh transfer |
-| POST | `/api/transactions/{id}/cancel` | Batalkan draft |
+| POST | `/api/transactions/{id}/cancel` | Batalkan sebelum pergerakan stok; JSON `note` wajib |
 | GET | `/api/transactions/stocks?organization_id=...` | Saldo per organisasi, barang, batch, dan posisi stok |
 
 Contoh header penerimaan (ID berupa UUID aktual):
@@ -859,8 +894,27 @@ docker compose exec app php -d memory_limit=512M tests/transactions-smoke.php
 ```
 
 Pengujian membuat akun khusus agar tidak mengeluarkan sesi admin pengguna, menguji
-akses lintas organisasi, FEFO, konversi snapshot, rollback, pembukuan bersamaan,
+akses APPRV lintas organisasi, verifikasi/approval super admin, pengembalian dan
+pengajuan ulang, pembatalan, riwayat, FEFO, konversi snapshot, rollback, pembukuan bersamaan,
 serta halaman admin, kemudian membersihkan hanya data uji miliknya.
+
+### Ringkasan Stok Barang
+
+Halaman Stok Barang menampilkan total per barang dan satuan dasar, dengan kolom
+Tersedia, Dalam Perjalanan, dan Total Stok. Total adalah jumlah kedua status;
+stok dalam perjalanan belum dapat digunakan oleh unit tujuan. Tanpa filter,
+super admin melihat gabungan seluruh SKPD/OPD. Pencarian `q` mencocokkan sebagian
+nama atau kode barang tanpa membedakan huruf besar/kecil; `organization_id` membatasi unit.
+Pengguna non-admin otomatis dibatasi organisasi Pegawai yang login.
+
+Aksi Detail Batch membuka rincian SKPD/OPD, nomor batch, tanggal kedaluwarsa,
+status, dan jumlah. Jumlah ditampilkan maksimal enam desimal agar tidak membulatkan
+stok kecil menjadi nol. Stok tersedia mencakup batch kedaluwarsa; aturan kelayakan
+transfer tetap diperiksa saat transaksi. Tidak ada perubahan ledger atau schema.
+
+API `/api/transactions/stocks` tetap mengembalikan rincian batch secara default.
+Tambahkan `summary=1` untuk ringkasan dengan `available`, `in_transit`, `total`,
+dan `batches`; filter `q` serta `organization_id` berlaku pada kedua bentuk.
 
 ### Batas stok dan pembagian batch
 

@@ -1,9 +1,60 @@
 {% extends 'transaction/base.html.twig' %}
 {% trans_default_domain 'pages' %}
 {% block content %}
-    <div class="card"><div class="card-header"><h4>{{ 'transaction.stock'|trans }}</h4></div><div class="card-body table-responsive">
-        <table class="table"><thead><tr>{% for label in ['organization', 'item', 'batch', 'expiry', 'location', 'qty'] %}<th>{{ ('transaction.' ~ label)|trans }}</th>{% endfor %}</tr></thead><tbody>
-        {% for stock in stocks %}<tr><td>{{ stock.organization }}</td><td>{{ stock.item }}</td><td>{{ stock.batch_number }}</td><td>{{ stock.expiry_date|default('-') }}</td><td><span class="badge badge-{{ {AVAILABLE: 'success', IN_TRANSIT: 'warning'}[stock.location]|default('secondary') }}">{{ ('transaction.location.' ~ stock.location)|trans }}</span></td><td>{{ stock.qty|number_format(2, ',', '.') }} {{ stock.unit }}</td></tr>{% else %}<tr><td colspan="6">{{ 'transaction.empty_stock'|trans }}</td></tr>{% endfor %}
-        </tbody></table>
-    </div></div>
+    <div class="card">
+        <div class="card-header">
+            <h4>{{ 'transaction.stock'|trans }}</h4>
+            <form method="get" class="row">
+                <div class="col-md-5 mb-2 mb-md-0">
+                    <select id="stock-organization" name="organization_id" class="form-control select2" aria-label="{{ 'transaction.organization'|trans }}" {% if own_organization %}disabled{% endif %}>
+                        {% if not own_organization %}<option value="">{{ 'transaction.all_organizations'|trans }}</option>{% endif %}
+                        {% for organization in organizations %}<option value="{{ organization.id }}" {% if selected_organization == organization.id %}selected{% endif %}>{{ organization.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-7">
+                    <div class="input-group">
+                        <input type="search" id="stock-search" name="q" class="form-control" value="{{ search }}" placeholder="{{ 'transaction.stock_search_placeholder'|trans }}" aria-label="{{ 'transaction.stock_search'|trans }}">
+                        <div class="input-group-append">
+                            <button type="submit" class="btn btn-default"><i class="cil-search pr-1 align-middle" aria-hidden="true"></i>{{ 'sas.table.action.search'|trans({}, 'tables') }}</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="card-body table-responsive">
+                <table class="table"><thead><tr>
+                    <th>{{ 'transaction.item_code'|trans }}</th><th>{{ 'transaction.item'|trans }}</th>
+                    <th class="text-right"><span class="badge badge-success">{{ 'transaction.location.AVAILABLE'|trans }}</span></th>
+                    <th class="text-right"><span class="badge badge-warning">{{ 'transaction.location.IN_TRANSIT'|trans }}</span></th>
+                    <th class="text-right">{{ 'transaction.total_stock'|trans }}</th><th>{{ 'transaction.unit'|trans }}</th><th>{{ 'transaction.actions'|trans }}</th>
+                </tr></thead><tbody>
+                {% for stock in stocks %}
+                    {% set batch_id = 'stock-batches-' ~ loop.index %}
+                    <tr data-stock-item="{{ stock.item_id }}">
+                        <td>{{ stock.item_code }}</td><td>{{ stock.item }}</td>
+                        {% for amount in [stock.available, stock.in_transit, stock.total] %}<td class="text-right text-nowrap">{{ amount|number_format(6, ',', '.')|trim('0', 'right')|trim(',', 'right') }}</td>{% endfor %}
+                        <td>{{ stock.unit }}</td>
+                        <td><button type="button" class="btn btn-sm btn-outline-info text-nowrap" data-toggle="collapse" data-target="#{{ batch_id }}" aria-expanded="false" aria-controls="{{ batch_id }}">{{ 'transaction.stock_batch_action'|trans }}</button></td>
+                    </tr>
+                    <tr id="{{ batch_id }}" class="collapse"><td colspan="7" class="bg-light">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0"><caption class="sr-only">{{ 'transaction.batch_details'|trans }} — {{ stock.item }}</caption><thead><tr>
+                                {% for label in ['organization', 'batch', 'expiry', 'location', 'qty'] %}<th>{{ ('transaction.' ~ label)|trans }}</th>{% endfor %}
+                            </tr></thead><tbody>
+                            {% for batch in stock.batches %}<tr>
+                                <td>{{ batch.organization }}</td><td>{{ batch.batch_number }}</td><td>{{ batch.expiry_date ? batch.expiry_date|date('d-m-Y') : '-' }}</td>
+                                <td><span class="badge badge-{{ batch.location == 'AVAILABLE' ? 'success' : 'warning' }}">{{ ('transaction.location.' ~ batch.location)|trans }}</span></td>
+                                <td class="text-nowrap">{{ batch.qty|number_format(6, ',', '.')|trim('0', 'right')|trim(',', 'right') }} {{ batch.unit }}</td>
+                            </tr>{% endfor %}
+                            </tbody></table>
+                        </div>
+                    </td></tr>
+                {% else %}<tr><td colspan="7">{{ 'transaction.empty_stock'|trans }}</td></tr>{% endfor %}
+                </tbody></table>
+        </div>
+    </div>
+{% endblock %}
+{% block javascripts %}
+    <script src="{{ asset('plugins/select2/js/select2.full.min.js') }}"></script>
+    <script>$(function () { $('#stock-organization').select2({theme: 'bootstrap4', width: '100%'}); });</script>
 {% endblock %}
