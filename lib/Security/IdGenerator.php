@@ -14,7 +14,7 @@ use Ramsey\Uuid\Uuid;
  */
 final class IdGenerator extends AbstractIdGenerator
 {
-    public function generateId(EntityManagerInterface $em, object|null $entity): mixed
+    public function generateId(EntityManagerInterface $em, ?object $entity): mixed
     {
         if (!$entity instanceof GroupInterface) {
             return Uuid::uuid4();

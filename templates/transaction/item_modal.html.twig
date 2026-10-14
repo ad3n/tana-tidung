@@ -1,0 +1,15 @@
+{% trans_default_domain 'pages' %}
+<div class="modal fade" id="transaction-item-modal" tabindex="-1" role="dialog" aria-labelledby="transaction-item-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title" id="transaction-item-title">{{ 'transaction.add_item'|trans }}</h5><button type="button" class="close" data-dismiss="modal" aria-label="{{ 'transaction.close'|trans }}"><span aria-hidden="true">&times;</span></button></div>
+        <form method="post" id="transaction-line-form">
+            {% if transaction %}<input type="hidden" name="_operation" value="line">{% endif %}
+            <div class="modal-body"><div class="row">{% include 'transaction/line_fields.html.twig' %}</div></div>
+            <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">{{ 'transaction.close'|trans }}</button><button type="submit" class="btn btn-primary">{{ 'transaction.add_item'|trans }}</button></div>
+        </form>
+    </div></div>
+</div>
+<script id="transaction-stock-data" type="application/json">{{ stocks|default([])|json_encode(15)|raw }}</script>
+<script id="transaction-form-messages" type="application/json">{{ {remove: 'transaction.remove'|trans, automatic: 'transaction.auto_batch'|trans, stock: 'transaction.available_stock'|trans, chooseOrganization: 'transaction.choose_origin'|trans, noStock: 'transaction.no_available_stock'|trans, insufficientStock: 'transaction.insufficient_stock'|trans, lineError: line_values|default([]) is not empty}|json_encode(15)|raw }}</script>
+
+<script id="transaction-existing-lines" type="application/json">{{ data.items|default([])|json_encode(15)|raw }}</script>

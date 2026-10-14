@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Admin\Controller\Item;
 
 use Doctrine\ORM\EntityManagerInterface;
-use KejawenLab\Application\Entity\{Item, ItemUnitConversion};
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
+use KejawenLab\Application\Entity\Item;
+use KejawenLab\Application\Entity\ItemUnitConversion;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -22,8 +23,10 @@ final class DeleteConversion extends AbstractController
         if (!$item || !$conversion) {
             throw $this->createNotFoundException();
         }
+
         $em->remove($conversion);
         $em->flush();
+
         return $this->redirectToRoute(Conversions::class, ['id' => $id], Response::HTTP_SEE_OTHER);
     }
 }

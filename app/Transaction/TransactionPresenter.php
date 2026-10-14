@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Transaction;
 
 use Doctrine\ORM\EntityManagerInterface;
-use KejawenLab\Application\Entity\{Transaction, TransactionItemAllocation};
+use KejawenLab\Application\Entity\Transaction;
+use KejawenLab\Application\Entity\TransactionItemAllocation;
 
 final class TransactionPresenter
 {
@@ -38,13 +39,14 @@ final class TransactionPresenter
                     'id' => $line->getId(), 'item_id' => $line->getItem()->getId(), 'item_name' => $line->getItem()->getName(), 'item_code' => $line->getItem()->getCode(),
                     'unit_id' => $line->getUnit()->getId(), 'unit_name' => $line->getUnit()->getName(), 'qty' => $line->getQty(),
                     'conversion_factor' => $line->getConversionFactor(), 'base_unit_id' => $line->getBaseUnit()->getId(),
-                    'base_unit_name' => $line->getBaseUnit()->getName(), 'base_qty' => $line->getBaseQty(),
+                    'base_unit_name' => $line->getBaseUnit()->getName(), 'base_unit_code' => $line->getBaseUnit()->getCode(), 'base_qty' => $line->getBaseQty(),
                     'batch_number' => $line->getBatchNumber(), 'expiry_date' => $line->getExpiryDate()?->format('Y-m-d'),
                     'stock_lot_id' => $line->getSelectedLot()?->getId(),
                     'allocations' => array_map(static fn ($a) => ['stock_lot_id' => $a->getStockLot()->getId(), 'batch_number' => $a->getStockLot()->getBatchNumber(), 'expiry_date' => $a->getStockLot()->getExpiryDate()?->format('Y-m-d'), 'base_qty' => $a->getBaseQty()], $allocations),
                 ];
             }
         }
+
         return $result;
     }
 }

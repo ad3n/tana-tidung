@@ -5,25 +5,26 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use KejawenLab\Application\Category\Model\CategoryInterface;
 use Gedmo\Blameable\Traits\BlameableEntity;
 use Gedmo\Mapping\Annotation as Gedmo;
 use Gedmo\SoftDeleteable\Traits\SoftDeleteableEntity;
 use Gedmo\Timestampable\Traits\TimestampableEntity;
+use KejawenLab\Application\Category\Model\CategoryInterface;
 use KejawenLab\Application\Item\Model\ItemInterface;
 use KejawenLab\Application\Repository\ItemRepository;
+use KejawenLab\Application\Unit\Validator\UnitConfiguration;
 use OpenApi\Attributes as OA;
 use Ramsey\Uuid\Doctrine\UuidGenerator;
 use Ramsey\Uuid\UuidInterface;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
-use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 #[Gedmo\SoftDeleteable(fieldName: 'deletedAt')]
 #[ORM\Entity(repositoryClass: ItemRepository::class)]
 #[ORM\Table(name: 'items')]
 #[UniqueEntity(fields: ['code'])]
-#[\KejawenLab\Application\Validation\UnitConfiguration]
+#[UnitConfiguration]
 class Item implements ItemInterface
 {
     use BlameableEntity;

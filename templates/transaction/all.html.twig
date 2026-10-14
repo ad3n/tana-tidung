@@ -1,15 +1,12 @@
 {% extends 'transaction/base.html.twig' %}
 {% trans_default_domain 'pages' %}
 {% block content %}
-    {% set menu = convert_to_menu('transaction') %}
-    {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
-    {% if is_granted('add', menu) %}{% include 'transaction/create_form.html.twig' %}{% endif %}
     <div class="row" id="transaction-list">
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <a class="btn btn-outline-info mb-2" href="{{ path('KejawenLab\\Application\\Admin\\Controller\\Transaction\\Stock') }}">{{ 'transaction.stock'|trans }}</a>
-                    <form method="get" class="input-group"><input class="form-control" name="q" value="{{ app.request.query.get('q') }}" placeholder="{{ 'transaction.search'|trans }}"><div class="input-group-append"><button class="btn btn-outline-secondary">{{ 'transaction.search'|trans }}</button></div></form>
+                    <h4>{{ page_title|trans }}</h4>
+                    <form method="get" class="input-group"><input class="form-control" name="q" value="{{ app.request.query.get('q') }}" placeholder="{{ search_label|trans }}"><div class="input-group-append"><button class="btn btn-outline-secondary">{{ search_label|trans }}</button></div></form>
                 </div>
                 <div class="card-body table-responsive">
                     <table class="table"><thead><tr><th>{{ 'transaction.code'|trans }}</th><th>{{ 'transaction.type'|trans }}</th><th>{{ 'transaction.organization'|trans }}</th><th>{{ 'transaction.status'|trans }}</th><th></th></tr></thead><tbody>

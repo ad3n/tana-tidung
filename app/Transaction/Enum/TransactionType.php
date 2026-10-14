@@ -12,6 +12,6 @@ enum TransactionType: int
 
     public function label(): string
     {
-        return 'transaction.type.' . $this->value;
+        return 'transaction.type.'.$this->value;
     }
 }

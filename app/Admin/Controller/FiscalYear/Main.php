@@ -5,18 +5,18 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Admin\Controller\FiscalYear;
 
 use KejawenLab\ApiSkeleton\Admin\Controller\AbstractController;
-use KejawenLab\Application\Entity\FiscalYear;
-use KejawenLab\Application\Form\FiscalYearType;
-use KejawenLab\Application\FiscalYear\FiscalYearService;
 use KejawenLab\ApiSkeleton\Pagination\Paginator;
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
 use KejawenLab\ApiSkeleton\Util\CacheFactory;
+use KejawenLab\Application\Entity\FiscalYear;
+use KejawenLab\Application\FiscalYear\FiscalYearService;
+use KejawenLab\Application\Form\FiscalYearType;
 use ReflectionClass;
 use Symfony\Component\Form\FormError;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -39,7 +39,7 @@ final class Main extends AbstractController
     {
         $fiscalyear = new FiscalYear();
         if ($request->isMethod(Request::METHOD_POST)) {
-            $id = $request->getSession()->get('admin_edit.' . self::class);
+            $id = $request->getSession()->get('admin_edit.'.self::class);
             if (null !== $id) {
                 $fiscalyear = $this->service->get($id);
             }
@@ -55,8 +55,9 @@ final class Main extends AbstractController
 
                     return $this->renderList($form, $request, new ReflectionClass(FiscalYear::class));
                 }
+
                 $this->addFlash('info', 'sas.page.fiscalyear.saved');
-                $request->getSession()->remove('admin_edit.' . self::class);
+                $request->getSession()->remove('admin_edit.'.self::class);
 
                 return $this->redirectToRoute(self::class, $request->query->all(), Response::HTTP_SEE_OTHER);
             }
@@ -64,12 +65,12 @@ final class Main extends AbstractController
             return $this->renderList($form, $request, new ReflectionClass(FiscalYear::class));
         }
 
-        $request->getSession()->remove('admin_edit.' . self::class);
-        $flashes = $request->getSession()->getFlashBag()->get('admin_edit.' . self::class);
+        $request->getSession()->remove('admin_edit.'.self::class);
+        $flashes = $request->getSession()->getFlashBag()->get('admin_edit.'.self::class);
         foreach ($flashes as $flash) {
             $fiscalyear = $this->service->get($flash);
             if (null !== $fiscalyear) {
-                $request->getSession()->set('admin_edit.' . self::class, $fiscalyear->getId());
+                $request->getSession()->set('admin_edit.'.self::class, $fiscalyear->getId());
 
                 break;
             }

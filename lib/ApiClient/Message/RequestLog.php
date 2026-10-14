@@ -42,7 +42,7 @@ final class RequestLog
         $this->queries = $request->query->all();
         $this->requests = $request->request->all();
         $this->files = $request->files->all();
-        $this->content = (string)$response->getContent();
+        $this->content = (string) $response->getContent();
         $this->statusCode = $response->getStatusCode();
     }
 

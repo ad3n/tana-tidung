@@ -29,12 +29,13 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 final readonly class SingleLoginSubscriber implements EventSubscriberInterface
 {
     public function __construct(
-        private UrlGeneratorInterface  $urlGenerator,
-        private UserService            $service,
-        private UserProviderFactory    $userProviderFactory,
+        private UrlGeneratorInterface $urlGenerator,
+        private UserService $service,
+        private UserProviderFactory $userProviderFactory,
         private CacheItemPoolInterface $cache,
         private EntityManagerInterface $entityManager,
-    ) {}
+    ) {
+    }
 
     /**
      * @return array<string, mixed>

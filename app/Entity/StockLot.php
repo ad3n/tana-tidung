@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Entity;
 
+use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
-use KejawenLab\Application\Transaction\Enum\{TransactionType, TransactionStatus};
+use Ramsey\Uuid\Uuid;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'stock_lots')]
@@ -17,7 +18,7 @@ class StockLot
 
     public function __construct()
     {
-        $this->id = \Ramsey\Uuid\Uuid::uuid4()->toString();
+        $this->id = Uuid::uuid4()->toString();
     }
 
     public function getId(): string
@@ -37,7 +38,7 @@ class StockLot
     private string $batchNumber;
 
     #[ORM\Column(type: 'date_immutable', nullable: true)]
-    private ?\DateTimeImmutable $expiryDate = null;
+    private ?DateTimeImmutable $expiryDate = null;
 
     public function getItem(): Item
     {
@@ -69,12 +70,12 @@ class StockLot
         $this->batchNumber = $batchNumber;
     }
 
-    public function getExpiryDate(): ?\DateTimeImmutable
+    public function getExpiryDate(): ?DateTimeImmutable
     {
         return $this->expiryDate;
     }
 
-    public function setExpiryDate(?\DateTimeImmutable $expiryDate): void
+    public function setExpiryDate(?DateTimeImmutable $expiryDate): void
     {
         $this->expiryDate = $expiryDate;
     }

@@ -7,12 +7,11 @@ namespace KejawenLab\Application\Controller\Organization;
 use FOS\RestBundle\Controller\AbstractFOSRestController;
 use FOS\RestBundle\Controller\Annotations\Post as Route;
 use FOS\RestBundle\View\View;
-use KejawenLab\Application\Entity\Organization;
-use KejawenLab\Application\Form\OrganizationType;
-use KejawenLab\Application\Organization\Model\OrganizationInterface;
-use KejawenLab\Application\Organization\OrganizationService;
 use KejawenLab\ApiSkeleton\Form\FormFactory;
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
+use KejawenLab\Application\Entity\Organization;
+use KejawenLab\Application\Form\OrganizationType;
+use KejawenLab\Application\Organization\OrganizationService;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use Nelmio\ApiDocBundle\Attribute\Security;
 use OpenApi\Attributes as OA;
@@ -55,7 +54,6 @@ final class Post extends AbstractFOSRestController
             return $this->view((array) $form->getErrors(), Response::HTTP_BAD_REQUEST);
         }
 
-        /** @var OrganizationInterface $organization */
         $organization = $form->getData();
         $this->service->save($organization);
 

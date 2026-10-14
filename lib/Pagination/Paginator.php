@@ -38,14 +38,14 @@ final class Paginator
 
     /**
      * @return array<string, array>
-     * @throws NonUniqueResultException
      *
+     * @throws NonUniqueResultException
      * @throws NoResultException
      */
     public function paginate(QueryBuilder $queryBuilder, Request $request, string $class): array
     {
-        $page = (int)$request->query->get($this->pageField, 1);
-        $perPage = (int)$request->query->get($this->perPageField, $this->perPageDefault);
+        $page = (int) $request->query->get($this->pageField, 1);
+        $perPage = (int) $request->query->get($this->perPageField, $this->perPageDefault);
         foreach ($this->queryExtension as $extension) {
             if ($extension->support($class, $request)) {
                 $extension->apply($queryBuilder, $request);
@@ -101,7 +101,7 @@ final class Paginator
             $query->enableResultCache($this->cacheLifetime, sprintf('%s_%s_%s_%s', sha1(self::class), sha1(__METHOD__), $deviceId, sha1(serialize($query->getParameters()))));
         }
 
-        return (int)$query->getSingleScalarResult();
+        return (int) $query->getSingleScalarResult();
     }
 
     private function paging(QueryBuilder $queryBuilder, string $deviceId, int $page, int $perPage, bool $disableCache = false): array

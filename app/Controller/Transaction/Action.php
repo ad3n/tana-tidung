@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Controller\Transaction;
 
-use KejawenLab\Application\Transaction\{TransactionService, TransactionPresenter};
+use KejawenLab\Application\Transaction\TransactionPresenter;
+use KejawenLab\Application\Transaction\TransactionService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -15,6 +16,7 @@ final class Action extends AbstractController
     public function __invoke(string $id, string $action, TransactionService $service, TransactionPresenter $presenter): JsonResponse
     {
         $service->transition($id, $action);
+
         return $this->json($presenter->present($service->get($id)));
     }
 }

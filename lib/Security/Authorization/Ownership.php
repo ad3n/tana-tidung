@@ -24,13 +24,12 @@ final class Ownership
     private const APPLICATION_NAMESPACE = 'KejawenLab\\Application\\Entity';
 
     public function __construct(
-        private readonly ManagerRegistry         $doctrine,
+        private readonly ManagerRegistry $doctrine,
         private readonly UserRepositoryInterface $userRepository,
-        private readonly TokenStorageInterface   $tokenStorage,
-        private readonly UserProviderFactory     $userProviderFactory,
-        private readonly string                  $ownershipProperty,
-    )
-    {
+        private readonly TokenStorageInterface $tokenStorage,
+        private readonly UserProviderFactory $userProviderFactory,
+        private readonly string $ownershipProperty,
+    ) {
     }
 
     public function isOwner(string $id, string $entity): bool
@@ -45,7 +44,7 @@ final class Ownership
         }
 
         $user = $this->userProviderFactory->getRealUser($user);
-        if ($user->getGroup()->getCode() === GroupInterface::SUPER_ADMIN_CODE) {
+        if (GroupInterface::SUPER_ADMIN_CODE === $user->getGroup()->getCode()) {
             return true;
         }
 
@@ -54,7 +53,7 @@ final class Ownership
         }
 
         $entity = $this->getEntity($entity);
-        if ($entity === null) {
+        if (null === $entity) {
             return false;
         }
 

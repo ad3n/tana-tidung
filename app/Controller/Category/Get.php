@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Controller\Category;
 
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use FOS\RestBundle\Controller\AbstractFOSRestController;
 use FOS\RestBundle\Controller\Annotations\Get as Route;
 use FOS\RestBundle\View\View;
-use KejawenLab\Application\Entity\Category;
+use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
 use KejawenLab\Application\Category\CategoryService;
 use KejawenLab\Application\Category\Model\CategoryInterface;
-use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
+use KejawenLab\Application\Entity\Category;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use Nelmio\ApiDocBundle\Attribute\Security;
 use OpenApi\Attributes as OA;
 use OpenApi\Attributes\Response;
 use OpenApi\Attributes\Tag;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**

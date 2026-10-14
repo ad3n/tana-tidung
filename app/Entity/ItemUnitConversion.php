@@ -5,16 +5,17 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
-use Symfony\Component\Validator\Constraints as Assert;
+use KejawenLab\Application\Unit\Validator\UnitConfiguration;
 use Ramsey\Uuid\Doctrine\UuidGenerator;
 use Ramsey\Uuid\UuidInterface;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'item_unit_conversions')]
 #[ORM\UniqueConstraint(name: 'item_conversion_unit_unique', columns: ['item_id', 'unit_id'])]
 #[UniqueEntity(fields: ['item', 'unit'], message: 'Konversi satuan ini sudah terdaftar untuk barang tersebut.')]
-#[\KejawenLab\Application\Validation\UnitConfiguration]
+#[UnitConfiguration]
 class ItemUnitConversion
 {
     #[ORM\Id]
@@ -43,26 +44,32 @@ class ItemUnitConversion
     {
         return $this->id?->toString();
     }
+
     public function getItem(): ?Item
     {
         return $this->item;
     }
+
     public function setItem(?Item $item): void
     {
         $this->item = $item;
     }
+
     public function getUnit(): ?Unit
     {
         return $this->unit;
     }
+
     public function setUnit(?Unit $unit): void
     {
         $this->unit = $unit;
     }
+
     public function getFactor(): string
     {
         return $this->factor;
     }
+
     public function setFactor(string $factor): void
     {
         $this->factor = trim($factor);

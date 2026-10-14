@@ -55,7 +55,7 @@ final class UserRepository extends AbstractRepository implements PasswordUpgrade
         }
 
         if (null === $user->getSupervisor()) {
-            return $user->getGroup()->getCode() === GroupInterface::SUPER_ADMIN_CODE;
+            return GroupInterface::SUPER_ADMIN_CODE === $user->getGroup()->getCode();
         }
 
         return $this->isSupervisor($user->getSupervisor(), $supervisor);
@@ -65,7 +65,7 @@ final class UserRepository extends AbstractRepository implements PasswordUpgrade
     {
         $deviceId = $this->getDeviceId();
         $cacheLifetime = self::MICRO_CACHE;
-        if ($deviceId !== '' && $deviceId !== '0') {
+        if ('' !== $deviceId && '0' !== $deviceId) {
             $cacheLifetime = SemartApiSkeleton::QUERY_CACHE_LIFETIME;
         }
 

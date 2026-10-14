@@ -47,7 +47,7 @@ final class CronStartCommand extends Command
         while (true) {
             $now = microtime(true);
 
-            usleep((int)((60 - fmod($now, 60)) * 1_000_000.0));
+            usleep((int) ((60 - fmod($now, 60)) * 1_000_000.0));
 
             $command->run($input, $output);
         }

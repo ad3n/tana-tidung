@@ -27,6 +27,6 @@ final class EmployeeChoices
 
     public function allowsGroup(?string $code): bool
     {
-        return $code !== null && strtoupper($code) !== strtoupper($this->superAdmin);
+        return null !== $code && strtoupper($code) !== strtoupper($this->superAdmin);
     }
 }

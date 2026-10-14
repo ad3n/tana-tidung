@@ -10,6 +10,7 @@ use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use KejawenLab\ApiSkeleton\Pagination\Model\PaginatableRepositoryInterface;
 use KejawenLab\ApiSkeleton\SemartApiSkeleton;
+use Override;
 use Symfony\Component\HttpFoundation\Exception\SessionNotFoundException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -23,19 +24,18 @@ abstract class AbstractRepository extends ServiceEntityRepository implements Pag
 
     public function __construct(
         protected RequestStack $requestStack,
-        ManagerRegistry        $registry,
-        string                 $entityClass,
-    )
-    {
+        ManagerRegistry $registry,
+        string $entityClass,
+    ) {
         parent::__construct($registry, $entityClass);
     }
 
-    #[\Override]
+    #[Override]
     public function find(mixed $id, LockMode|int|null $lockMode = null, ?int $lockVersion = null): ?object
     {
         $deviceId = $this->getDeviceId();
         $cacheLifetime = self::MICRO_CACHE;
-        if ($deviceId !== '' && $deviceId !== '0') {
+        if ('' !== $deviceId && '0' !== $deviceId) {
             $cacheLifetime = SemartApiSkeleton::QUERY_CACHE_LIFETIME;
         }
 
@@ -83,12 +83,12 @@ abstract class AbstractRepository extends ServiceEntityRepository implements Pag
         return is_countable($this->findAll()) ? \count($this->findAll()) : 0;
     }
 
-    #[\Override]
+    #[Override]
     public function findAll(): array
     {
         $deviceId = $this->getDeviceId();
         $cacheLifetime = self::MICRO_CACHE;
-        if ($deviceId !== '' && $deviceId !== '0') {
+        if ('' !== $deviceId && '0' !== $deviceId) {
             $cacheLifetime = SemartApiSkeleton::QUERY_CACHE_LIFETIME;
         }
 

@@ -12,6 +12,7 @@ use KejawenLab\ApiSkeleton\Security\Model\UserInterface;
 use KejawenLab\ApiSkeleton\Service\AbstractService;
 use KejawenLab\ApiSkeleton\Service\Model\ServiceInterface;
 use KejawenLab\ApiSkeleton\Util\Encryptor;
+use Override;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
@@ -27,7 +28,7 @@ final class ApiClientService extends AbstractService implements ServiceInterface
     /**
      * @param ApiClient $object
      */
-    #[\Override]
+    #[Override]
     public function save(object $object): void
     {
         $object->setApiKey(sha1(date('YmdHis')));

@@ -92,7 +92,6 @@ By: KejawenLab - Muhamad Surya Iksanudin<<comment>surya.iksanudin@gmail.com</com
 
         $io->title('Clear Cache');
 
-
         $input = new ArrayInput([
             'command' => 'cache:clear',
         ]);

@@ -22,3 +22,28 @@ label:has(input[required], select[required], textarea[required])::after {
     font-size: 14px;
     font-weight: 600;
 }
+
+/* Let the adjacent fields determine the desktop notes height. */
+@media (min-width: 992px) {
+    .transaction-notes-column > label {
+        flex-shrink: 0;
+    }
+
+    .transaction-notes-column > textarea {
+        flex: 1 1 0;
+        height: 0;
+        min-height: 0;
+    }
+}
+
+.transaction-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.transaction-action-buttons > form {
+    margin: 0;
+}

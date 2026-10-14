@@ -6,7 +6,8 @@ namespace KejawenLab\Application\Admin\Controller\Transaction;
 
 use KejawenLab\Application\Transaction\TransactionService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\{Request, Response};
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class Stock extends AbstractController

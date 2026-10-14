@@ -25,13 +25,12 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 final class UserService extends AbstractService implements ServiceInterface
 {
     public function __construct(
-        private readonly MessageBusInterface         $messageBus,
-        UserRepositoryInterface                      $repository,
-        AliasHelper                                  $aliasHelper,
+        private readonly MessageBusInterface $messageBus,
+        UserRepositoryInterface $repository,
+        AliasHelper $aliasHelper,
         private readonly UserPasswordHasherInterface $passwordHasher,
-        private readonly MediaService                $mediaService,
-    )
-    {
+        private readonly MediaService $mediaService,
+    ) {
         parent::__construct($messageBus, $repository, $aliasHelper);
     }
 

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Level;
 
-use KejawenLab\Application\Level\Model\LevelRepositoryInterface;
 use KejawenLab\ApiSkeleton\Pagination\AliasHelper;
 use KejawenLab\ApiSkeleton\Service\AbstractService;
 use KejawenLab\ApiSkeleton\Service\Model\ServiceInterface;
+use KejawenLab\Application\Level\Model\LevelRepositoryInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**

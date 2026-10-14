@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Form;
 
-use KejawenLab\Application\Entity\{Unit, ItemUnitConversion};
+use KejawenLab\Application\Entity\ItemUnitConversion;
+use KejawenLab\Application\Entity\Unit;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
-use Symfony\Component\Form\{AbstractType, FormBuilderInterface};
+use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class ItemUnitConversionType extends AbstractType
@@ -23,6 +25,7 @@ class ItemUnitConversionType extends AbstractType
                 if (!$base || !in_array($base->getType(), Unit::TYPES, true)) {
                     return $query->where('1 = 0');
                 }
+
                 return $query->where('u.id != :base')->andWhere('u.type IN (:types)')
                     ->setParameter('base', $base->getId())->setParameter('types', [$base->getType(), 'package']);
             },
@@ -35,6 +38,7 @@ class ItemUnitConversionType extends AbstractType
             'help' => 'sas.form.field.item_conversion.help',
         ]);
     }
+
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults(['data_class' => ItemUnitConversion::class, 'translation_domain' => 'forms']);

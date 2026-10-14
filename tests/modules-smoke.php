@@ -17,29 +17,27 @@ function request(string $path, int $expected, string $method = 'GET', string $pa
         'follow_location' => 0,
         'timeout' => 30,
     ]]);
-    $body = file_get_contents($base . $path, false, $context);
+    $body = file_get_contents($base.$path, false, $context);
     $responseHeaders = $http_response_header ?? [];
     preg_match('/\s(\d{3})\s/', $responseHeaders[0] ?? '', $matches);
     $status = (int) ($matches[1] ?? 0);
     echo sprintf("%s %s %d\n", $method, $path, $status);
 
-    if ($status !== $expected || $body === false) {
+    if ($status !== $expected || false === $body) {
         throw new RuntimeException(sprintf('%s %s: expected HTTP %d, got %d', $method, $path, $expected, $status));
     }
 
     return [$body, $responseHeaders];
 }
 
-
-
 function moduleRequest(string $path, int $status, string $method = 'GET', array $data = []): array
 {
     global $token;
-    [$body] = request('/api/' . $path . (str_contains($path, '?') ? '&' : '?') . 'dcq=1', $status, $method,
+    [$body] = request('/api/'.$path.(str_contains($path, '?') ? '&' : '?').'dcq=1', $status, $method,
         $data ? json_encode($data, JSON_THROW_ON_ERROR) : '',
-        ['Content-Type: application/json', 'Authorization: Bearer ' . $token]);
+        ['Content-Type: application/json', 'Authorization: Bearer '.$token]);
 
-    return $body === '' ? [] : json_decode($body, true, flags: JSON_THROW_ON_ERROR);
+    return '' === $body ? [] : json_decode($body, true, flags: JSON_THROW_ON_ERROR);
 }
 
 function checkModule(bool $condition, string $message): void
@@ -56,33 +54,33 @@ $suffix = strtoupper(bin2hex(random_bytes(5)));
 $created = [];
 try {
     foreach (['levels', 'organizations'] as $module) {
-        request('/api/' . $module, 401);
+        request('/api/'.$module, 401);
 
         moduleRequest($module, 400, 'POST', ['name' => '']);
     }
-    $level = moduleRequest('levels', 201, 'POST', ['name' => 'Level ' . $suffix]);
-    $created[] = 'levels/' . $level['id'];
-    $updated = moduleRequest(end($created), 200, 'PUT', ['name' => 'Updated ' . $suffix]);
-    checkModule($updated['name'] === 'Updated ' . $suffix, 'Level update failed');
-    $levels = moduleRequest('levels?q=' . $suffix, 200);
-    checkModule(count($levels['items']) === 1, 'Level search failed');
-    checkModule(moduleRequest('levels?q=missing' . $suffix, 200)['total_item'] === 0, 'Level filtering failed');
-    $rootData = ['code' => 'R' . $suffix, 'name' => 'Root ' . $suffix];
+    $level = moduleRequest('levels', 201, 'POST', ['name' => 'Level '.$suffix]);
+    $created[] = 'levels/'.$level['id'];
+    $updated = moduleRequest(end($created), 200, 'PUT', ['name' => 'Updated '.$suffix]);
+    checkModule($updated['name'] === 'Updated '.$suffix, 'Level update failed');
+    $levels = moduleRequest('levels?q='.$suffix, 200);
+    checkModule(1 === count($levels['items']), 'Level search failed');
+    checkModule(0 === moduleRequest('levels?q=missing'.$suffix, 200)['total_item'], 'Level filtering failed');
+    $rootData = ['code' => 'R'.$suffix, 'name' => 'Root '.$suffix];
     $root = moduleRequest('organizations', 201, 'POST', $rootData);
-    $created[] = 'organizations/' . $root['id'];
-    $childData = ['code' => 'C' . $suffix, 'name' => 'Child ' . $suffix, 'parent' => $root['id']];
+    $created[] = 'organizations/'.$root['id'];
+    $childData = ['code' => 'C'.$suffix, 'name' => 'Child '.$suffix, 'parent' => $root['id']];
     $child = moduleRequest('organizations', 201, 'POST', $childData);
-    $created[] = 'organizations/' . $child['id'];
+    $created[] = 'organizations/'.$child['id'];
     checkModule($child['parent']['id'] === $root['id'], 'Parent relation failed');
     moduleRequest('organizations', 400, 'POST', $rootData);
-    moduleRequest('organizations/' . $root['id'], 400, 'PUT', $rootData + ['parent' => $root['id']]);
-    moduleRequest('organizations/' . $root['id'], 400, 'PUT', $rootData + ['parent' => $child['id']]);
-    $stored = moduleRequest('organizations/' . $root['id'], 200);
+    moduleRequest('organizations/'.$root['id'], 400, 'PUT', $rootData + ['parent' => $root['id']]);
+    moduleRequest('organizations/'.$root['id'], 400, 'PUT', $rootData + ['parent' => $child['id']]);
+    $stored = moduleRequest('organizations/'.$root['id'], 200);
     checkModule(($stored['parent'] ?? null) === null, 'Invalid hierarchy was persisted');
-    checkModule(moduleRequest('organizations?q=C' . $suffix, 200)['total_item'] === 1, 'Code search failed');
-    checkModule(moduleRequest('organizations?q=' . rawurlencode('Root ' . $suffix), 200)['total_item'] === 1, 'Name search failed');
+    checkModule(1 === moduleRequest('organizations?q=C'.$suffix, 200)['total_item'], 'Code search failed');
+    checkModule(1 === moduleRequest('organizations?q='.rawurlencode('Root '.$suffix), 200)['total_item'], 'Name search failed');
     $childData['parent'] = null;
-    $detached = moduleRequest('organizations/' . $child['id'], 200, 'PUT', $childData);
+    $detached = moduleRequest('organizations/'.$child['id'], 200, 'PUT', $childData);
     checkModule(($detached['parent'] ?? null) === null, 'Clearing parent failed');
 } finally {
     foreach (array_reverse($created) as $path) {

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Organization\Query;
 
 use Doctrine\ORM\QueryBuilder;
-use KejawenLab\Application\Organization\Model\OrganizationInterface;
 use KejawenLab\ApiSkeleton\Pagination\Query\AbstractQueryExtension;
 use KejawenLab\ApiSkeleton\Util\StringUtil;
+use KejawenLab\Application\Organization\Model\OrganizationInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -24,7 +24,7 @@ final class OrganizationQueryExtension extends AbstractQueryExtension
 
         $alias = $this->aliasHelper->findAlias('root');
         $queryBuilder->andWhere(sprintf('(UPPER(%s.code) LIKE :organizationSearch OR UPPER(%s.name) LIKE :organizationSearch)', $alias, $alias))
-            ->setParameter('organizationSearch', '%' . StringUtil::uppercase($query) . '%');
+            ->setParameter('organizationSearch', '%'.StringUtil::uppercase($query).'%');
     }
 
     public function support(string $class, Request $request): bool

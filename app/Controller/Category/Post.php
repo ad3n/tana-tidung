@@ -7,12 +7,11 @@ namespace KejawenLab\Application\Controller\Category;
 use FOS\RestBundle\Controller\AbstractFOSRestController;
 use FOS\RestBundle\Controller\Annotations\Post as Route;
 use FOS\RestBundle\View\View;
-use KejawenLab\Application\Entity\Category;
-use KejawenLab\Application\Form\CategoryType;
-use KejawenLab\Application\Category\Model\CategoryInterface;
-use KejawenLab\Application\Category\CategoryService;
 use KejawenLab\ApiSkeleton\Form\FormFactory;
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
+use KejawenLab\Application\Category\CategoryService;
+use KejawenLab\Application\Entity\Category;
+use KejawenLab\Application\Form\CategoryType;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use Nelmio\ApiDocBundle\Attribute\Security;
 use OpenApi\Attributes as OA;
@@ -55,7 +54,6 @@ final class Post extends AbstractFOSRestController
             return $this->view((array) $form->getErrors(), Response::HTTP_BAD_REQUEST);
         }
 
-        /** @var CategoryInterface $category */
         $category = $form->getData();
         $this->service->save($category);
 

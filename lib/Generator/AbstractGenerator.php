@@ -18,12 +18,11 @@ use Twig\Environment;
 abstract class AbstractGenerator implements GeneratorInterface
 {
     public function __construct(
-        protected Environment            $twig,
-        protected Filesystem             $fileSystem,
-        protected KernelInterface        $kernel,
+        protected Environment $twig,
+        protected Filesystem $fileSystem,
+        protected KernelInterface $kernel,
         protected EntityManagerInterface $entityManager,
-    )
-    {
+    ) {
     }
 
     public function hasAssociation(ReflectionClass $class): bool

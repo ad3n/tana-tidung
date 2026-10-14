@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace KejawenLab\ApiSkeleton\Tests\Audit;
 
+use DateTimeImmutable;
 use KejawenLab\ApiSkeleton\Audit\AuditItem;
 use PHPUnit\Framework\TestCase;
 
@@ -14,7 +15,7 @@ class AuditItemTest extends TestCase
 {
     public function testToArray(): void
     {
-        $item = new AuditItem('test', ['data' => 'test data'], new \DateTimeImmutable('2021-04-03'), 'user-id', 'user-name', '127.0.0.1');
+        $item = new AuditItem('test', ['data' => 'test data'], new DateTimeImmutable('2021-04-03'), 'user-id', 'user-name', '127.0.0.1');
         $return = $item->toArray();
 
         $this->assertSame('test', $return['type']);

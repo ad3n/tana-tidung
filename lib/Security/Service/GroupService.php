@@ -17,11 +17,10 @@ use Symfony\Component\Messenger\MessageBusInterface;
 final class GroupService extends AbstractService implements ServiceInterface
 {
     public function __construct(
-        MessageBusInterface      $messageBus,
+        MessageBusInterface $messageBus,
         GroupRepositoryInterface $repository,
-        AliasHelper              $aliasHelper,
-    )
-    {
+        AliasHelper $aliasHelper,
+    ) {
         parent::__construct($messageBus, $repository, $aliasHelper);
     }
 

@@ -61,7 +61,7 @@ sas:
                 user: 'Pengguna'
                 organization: 'SKPD/OPD'
                 level: 'Jabatan'
-                code: 'Kode Pegawai'
+                code: 'Nomor Induk Pegawai'
                 name: 'Nama Pegawai'
             unit:
                 code: 'Kode Satuan'

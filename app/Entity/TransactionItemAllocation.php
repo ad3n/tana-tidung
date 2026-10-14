@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use KejawenLab\Application\Transaction\Enum\{TransactionType, TransactionStatus};
+use Ramsey\Uuid\Uuid;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'transaction_item_allocations')]
@@ -18,7 +18,7 @@ class TransactionItemAllocation
 
     public function __construct()
     {
-        $this->id = \Ramsey\Uuid\Uuid::uuid4()->toString();
+        $this->id = Uuid::uuid4()->toString();
     }
 
     public function getId(): string

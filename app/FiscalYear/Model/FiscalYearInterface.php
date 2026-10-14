@@ -9,5 +9,6 @@ use KejawenLab\ApiSkeleton\Entity\EntityInterface;
 interface FiscalYearInterface extends EntityInterface
 {
     public function getYear(): ?int;
+
     public function getStatus(): bool;
 }

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Level\Query;
 
 use Doctrine\ORM\QueryBuilder;
-use KejawenLab\Application\Level\Model\LevelInterface;
 use KejawenLab\ApiSkeleton\Pagination\Query\AbstractQueryExtension;
 use KejawenLab\ApiSkeleton\Util\StringUtil;
+use KejawenLab\Application\Level\Model\LevelInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -24,7 +24,7 @@ final class LevelQueryExtension extends AbstractQueryExtension
 
         $alias = $this->aliasHelper->findAlias('root');
         $queryBuilder->andWhere(sprintf('(UPPER(%s.name) LIKE :levelSearch)', $alias))
-            ->setParameter('levelSearch', '%' . StringUtil::uppercase($query) . '%');
+            ->setParameter('levelSearch', '%'.StringUtil::uppercase($query).'%');
     }
 
     public function support(string $class, Request $request): bool

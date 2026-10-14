@@ -9,20 +9,21 @@ use Gedmo\Blameable\Traits\BlameableEntity;
 use Gedmo\Mapping\Annotation as Gedmo;
 use Gedmo\SoftDeleteable\Traits\SoftDeleteableEntity;
 use Gedmo\Timestampable\Traits\TimestampableEntity;
-use KejawenLab\Application\Unit\Model\UnitInterface;
 use KejawenLab\Application\Repository\UnitRepository;
+use KejawenLab\Application\Unit\Model\UnitInterface;
+use KejawenLab\Application\Unit\Validator\UnitConfiguration;
 use OpenApi\Attributes as OA;
 use Ramsey\Uuid\Doctrine\UuidGenerator;
 use Ramsey\Uuid\UuidInterface;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
-use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 #[Gedmo\SoftDeleteable(fieldName: 'deletedAt')]
 #[ORM\Entity(repositoryClass: UnitRepository::class)]
 #[ORM\Table(name: 'units')]
 #[UniqueEntity(fields: ['code'])]
-#[\KejawenLab\Application\Validation\UnitConfiguration]
+#[UnitConfiguration]
 class Unit implements UnitInterface
 {
     use BlameableEntity;

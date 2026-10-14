@@ -13,6 +13,6 @@ enum TransactionStatus: int
 
     public function label(): string
     {
-        return 'transaction.status.' . $this->value;
+        return 'transaction.status.'.$this->value;
     }
 }

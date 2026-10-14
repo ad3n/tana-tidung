@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Admin\Controller\Item;
 
-use KejawenLab\Application\Item\Model\ItemInterface;
-use KejawenLab\Application\Item\ItemService;
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
+use KejawenLab\Application\Item\ItemService;
+use KejawenLab\Application\Item\Model\ItemInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,7 +15,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * @author Muhamad Surya Iksanudin<surya.iksanudin@gmail.com>
-*/
+ */
 #[Permission(menu: 'ITEM', actions: [Permission::EDIT])]
 final class Put extends AbstractController
 {
@@ -33,7 +33,7 @@ final class Put extends AbstractController
             return new RedirectResponse($this->generateUrl(Main::class, $request->query->all()));
         }
 
-        $this->addFlash('admin_edit.' . Main::class, $item->getId());
+        $this->addFlash('admin_edit.'.Main::class, $item->getId());
 
         return new RedirectResponse($this->generateUrl(Main::class, $request->query->all()));
     }

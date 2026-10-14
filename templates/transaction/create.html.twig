@@ -1,0 +1,7 @@
+{% extends 'transaction/base.html.twig' %}
+{% trans_default_domain 'pages' %}
+{% block content %}
+    {% set menu = convert_to_menu('transaction') %}
+    {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+    {% if is_granted('add', menu) %}{% include 'transaction/create_form.html.twig' %}{% endif %}
+{% endblock %}

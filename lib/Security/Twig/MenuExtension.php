@@ -7,6 +7,7 @@ namespace KejawenLab\ApiSkeleton\Security\Twig;
 use Iterator;
 use KejawenLab\ApiSkeleton\Security\Model\MenuInterface;
 use KejawenLab\ApiSkeleton\Security\Service\MenuService;
+use Override;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Twig\Environment;
 use Twig\Extension\AbstractExtension;
@@ -18,17 +19,16 @@ use Twig\TwigFunction;
 final class MenuExtension extends AbstractExtension
 {
     public function __construct(
-        private readonly Environment  $twig,
+        private readonly Environment $twig,
         private readonly RequestStack $requestStack,
-        private readonly MenuService  $menuService,
-    )
-    {
+        private readonly MenuService $menuService,
+    ) {
     }
 
     /**
      * @return Iterator<TwigFunction>
      */
-    #[\Override]
+    #[Override]
     public function getFunctions(): iterable
     {
         yield new TwigFunction('convert_to_menu', [$this, 'getMenu']);

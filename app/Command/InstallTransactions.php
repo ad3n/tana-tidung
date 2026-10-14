@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Command;
 
 use Doctrine\ORM\EntityManagerInterface;
-use KejawenLab\ApiSkeleton\Entity\{Menu, Group, Permission};
+use KejawenLab\ApiSkeleton\Entity\Group;
+use KejawenLab\ApiSkeleton\Entity\Menu;
+use KejawenLab\ApiSkeleton\Entity\Permission;
+use KejawenLab\Application\Admin\Controller\Transaction\Listing;
 use KejawenLab\Application\Admin\Controller\Transaction\Main;
+use KejawenLab\Application\Admin\Controller\Transaction\Stock;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -41,6 +45,7 @@ final class InstallTransactions extends Command
                     }
                 }
             }
+
             $menu = $this->em->getRepository(Menu::class)->findOneBy(['code' => 'TRANSACTION']);
             if (!$menu) {
                 $menu = new Menu();
@@ -51,23 +56,35 @@ final class InstallTransactions extends Command
                 $menu->setRouteName('#');
                 $this->em->persist($menu);
             }
+
             $menu->setRouteName('#');
             $children = [];
-            foreach (['receipt' => 'Penerimaan', 'transfer' => 'Transfer', 'disposal' => 'Pengeluaran'] as $key => $name) {
-                $code = 'TRANSACTION_' . strtoupper($key);
+            foreach (['receipt' => 'Penerimaan', 'transfer' => 'Transfer', 'disposal' => 'Pengeluaran', 'receipt_list' => 'Daftar Penerimaan', 'disposal_list' => 'Daftar Pengeluaran', 'transfer_list' => 'Daftar Transfer', 'stock' => 'Stok Barang'] as $key => $name) {
+                $code = 'TRANSACTION_'.strtoupper($key);
                 $child = $this->em->getRepository(Menu::class)->findOneBy(['code' => $code]);
                 if (!$child) {
                     $child = new Menu();
                     $child->setCode($code);
                     $this->em->persist($child);
                 }
+
                 $child->setParent($menu);
                 $child->setName($name);
                 $child->setSortOrder(count($children));
                 $child->setAdminOnly(true);
-                $child->setRouteName(Main::class . '_' . $key);
+                $route = Main::class.'_'.$key;
+                if (str_ends_with($key, '_list')) {
+                    $route = Listing::class.'_'.substr($key, 0, -5);
+                }
+
+                if ('stock' === $key) {
+                    $route = Stock::class;
+                }
+
+                $child->setRouteName($route);
                 $children[] = $child;
             }
+
             foreach ($this->em->getRepository(Group::class)->findAll() as $group) {
                 $permission = $this->em->getRepository(Permission::class)->findOneBy(['group' => $group, 'menu' => $menu]);
                 if (!$permission) {
@@ -81,21 +98,26 @@ final class InstallTransactions extends Command
                     $permission->setDeletable($allowed);
                     $this->em->persist($permission);
                 }
+
                 foreach ($children as $child) {
-                    if ($this->em->getRepository(Permission::class)->findOneBy(['group' => $group, 'menu' => $child])) { continue; }
+                    if ($this->em->getRepository(Permission::class)->findOneBy(['group' => $group, 'menu' => $child])) {
+                        continue;
+                    }
+
                     $childPermission = new Permission();
                     $childPermission->setGroup($group);
                     $childPermission->setMenu($child);
                     $childPermission->setViewable($permission->isViewable());
-                    $childPermission->setAddable($permission->isAddable());
-                    $childPermission->setEditable($permission->isEditable());
-                    $childPermission->setDeletable($permission->isDeletable());
+                    $childPermission->setAddable(!str_ends_with($child->getCode(), '_LIST') && 'TRANSACTION_STOCK' !== $child->getCode() && $permission->isAddable());
+                    $childPermission->setEditable(!str_ends_with($child->getCode(), '_LIST') && 'TRANSACTION_STOCK' !== $child->getCode() && $permission->isEditable());
+                    $childPermission->setDeletable(!str_ends_with($child->getCode(), '_LIST') && 'TRANSACTION_STOCK' !== $child->getCode() && $permission->isDeletable());
                     $this->em->persist($childPermission);
                 }
             }
         });
         $this->em->getConfiguration()->getResultCache()?->clear();
         $output->writeln('Transaction menu and constraints installed. Configure non-admin groups through Group permissions.');
+
         return Command::SUCCESS;
     }
 }

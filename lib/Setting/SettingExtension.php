@@ -6,6 +6,7 @@ namespace KejawenLab\ApiSkeleton\Setting;
 
 use Iterator;
 use KejawenLab\ApiSkeleton\Setting\Model\SettingInterface;
+use Override;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
@@ -21,7 +22,7 @@ final class SettingExtension extends AbstractExtension
     /**
      * @return Iterator<TwigFunction>
      */
-    #[\Override]
+    #[Override]
     public function getFunctions(): iterable
     {
         yield new TwigFunction('setting', [$this, 'getSetting']);

@@ -121,7 +121,7 @@ class User implements UserInterface
 
     public function getProfileImage(): ?string
     {
-        if ($this->profileImage === null || $this->profileImage === '') {
+        if (null === $this->profileImage || '' === $this->profileImage) {
             return $this->profileImage;
         }
 
@@ -197,7 +197,7 @@ class User implements UserInterface
 
     public function getId(): ?string
     {
-        return (string)$this->id;
+        return (string) $this->id;
     }
 
     public function getCredential(): ?string
@@ -207,7 +207,7 @@ class User implements UserInterface
 
     public function getPassword(): ?string
     {
-        return (string)$this->password;
+        return (string) $this->password;
     }
 
     public function setPassword(string $password): void

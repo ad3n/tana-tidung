@@ -53,7 +53,7 @@ class CronReport implements CronReportInterface
 
     public function getId(): ?string
     {
-        return (string)$this->id;
+        return (string) $this->id;
     }
 
     public function getCron(): ?CronInterface

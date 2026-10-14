@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace KejawenLab\ApiSkeleton\Tests\EventSubscriber;
 
+use Doctrine\Bundle\DoctrineBundle\Attribute\AsEntityListener;
 use Doctrine\ORM\Event\PostLoadEventArgs;
 use Doctrine\ORM\Events;
 use KejawenLab\ApiSkeleton\Entity\Media;
 use KejawenLab\ApiSkeleton\EventSubscriber\SetFileUrlSubscriber;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use Vich\UploaderBundle\Storage\StorageInterface;
 
 /**
@@ -34,8 +36,8 @@ class SetFileUrlSubscriberTest extends TestCase
 
     public function testListenerRegistration(): void
     {
-        $reflection = new \ReflectionClass(SetFileUrlSubscriber::class);
-        $attributes = $reflection->getAttributes(\Doctrine\Bundle\DoctrineBundle\Attribute\AsEntityListener::class);
+        $reflection = new ReflectionClass(SetFileUrlSubscriber::class);
+        $attributes = $reflection->getAttributes(AsEntityListener::class);
 
         $this->assertCount(1, $attributes);
         $this->assertSame(Events::postLoad, $attributes[0]->newInstance()->event);

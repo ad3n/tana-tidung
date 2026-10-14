@@ -10,10 +10,12 @@ use KejawenLab\ApiSkeleton\Security\Service\UserProviderFactory;
 use KejawenLab\ApiSkeleton\Security\User;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * @author Muhamad Surya Iksanudin<surya.iksanudin@gmail.com>
@@ -31,7 +33,7 @@ class ApiClientRequestLogSubscriberTest extends TestCase
         $event = $this->createMock(ResponseEvent::class);
         $event->expects($this->once())->method('isMainRequest')->willReturn(false);
 
-        $event->method('getResponse')->willReturn(new \Symfony\Component\HttpFoundation\Response());
+        $event->method('getResponse')->willReturn(new Response());
 
         $apiClientRequest = new ApiClientRequestLogSubscriber($tokenStorage, $userProvider, $messageBus);
         $apiClientRequest->requestLog($event);
@@ -48,7 +50,7 @@ class ApiClientRequestLogSubscriberTest extends TestCase
         $event = $this->createMock(ResponseEvent::class);
         $event->expects($this->once())->method('isMainRequest')->willReturn(true);
 
-        $event->method('getResponse')->willReturn(new \Symfony\Component\HttpFoundation\Response());
+        $event->method('getResponse')->willReturn(new Response());
 
         $apiClientRequest = new ApiClientRequestLogSubscriber($tokenStorage, $userProvider, $messageBus);
         $apiClientRequest->requestLog($event);
@@ -57,7 +59,7 @@ class ApiClientRequestLogSubscriberTest extends TestCase
     public function testTokenReturnNonValidUser(): void
     {
         $token = $this->createMock(TokenInterface::class);
-        $token->expects($this->once())->method('getUser')->willReturn($this->createStub(\Symfony\Component\Security\Core\User\UserInterface::class));
+        $token->expects($this->once())->method('getUser')->willReturn($this->createStub(UserInterface::class));
 
         $tokenStorage = $this->createMock(TokenStorageInterface::class);
         $tokenStorage->expects($this->once())->method('getToken')->willReturn($token);
@@ -70,7 +72,7 @@ class ApiClientRequestLogSubscriberTest extends TestCase
         $event = $this->createMock(ResponseEvent::class);
         $event->expects($this->once())->method('isMainRequest')->willReturn(true);
 
-        $event->method('getResponse')->willReturn(new \Symfony\Component\HttpFoundation\Response());
+        $event->method('getResponse')->willReturn(new Response());
 
         $apiClientRequest = new ApiClientRequestLogSubscriber($tokenStorage, $userProvider, $messageBus);
         $apiClientRequest->requestLog($event);
@@ -98,7 +100,7 @@ class ApiClientRequestLogSubscriberTest extends TestCase
         $event->expects($this->once())->method('isMainRequest')->willReturn(true);
         $event->expects($this->once())->method('getRequest')->willReturn(Request::createFromGlobals());
 
-        $event->method('getResponse')->willReturn(new \Symfony\Component\HttpFoundation\Response());
+        $event->method('getResponse')->willReturn(new Response());
 
         $apiClientRequest = new ApiClientRequestLogSubscriber($tokenStorage, $userProvider, $messageBus);
         $apiClientRequest->requestLog($event);

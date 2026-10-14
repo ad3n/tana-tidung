@@ -14,10 +14,11 @@ use KejawenLab\Application\Repository\OrganizationRepository;
 use OpenApi\Attributes as OA;
 use Ramsey\Uuid\Doctrine\UuidGenerator;
 use Ramsey\Uuid\UuidInterface;
-use Symfony\Component\Serializer\Attribute\Groups;
-use Symfony\Component\Validator\Constraints as Assert;
+use SplObjectStorage;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Attribute\MaxDepth;
+use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 #[Gedmo\SoftDeleteable(fieldName: 'deletedAt')]
@@ -84,11 +85,11 @@ class Organization implements OrganizationInterface
     #[Assert\Callback]
     public function validateHierarchy(ExecutionContextInterface $context): void
     {
-        $seen = new \SplObjectStorage();
+        $seen = new SplObjectStorage();
         $seen->attach($this);
         $parent = $this->parent;
-        while ($parent !== null) {
-            if ($seen->contains($parent) || ($this->getId() !== null && $parent->getId() === $this->getId())) {
+        while (null !== $parent) {
+            if ($seen->contains($parent) || (null !== $this->getId() && $parent->getId() === $this->getId())) {
                 $context->buildViolation('SKPD/OPD induk tidak boleh membentuk hubungan melingkar.')
                     ->atPath('parent')->addViolation();
 

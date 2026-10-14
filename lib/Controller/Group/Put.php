@@ -31,11 +31,10 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 final class Put extends AbstractFOSRestController
 {
     public function __construct(
-        private readonly FormFactory         $formFactory,
-        private readonly GroupService        $service,
+        private readonly FormFactory $formFactory,
+        private readonly GroupService $service,
         private readonly TranslatorInterface $translator,
-    )
-    {
+    ) {
     }
 
     #[Route(data: '/groups/{id}', name: self::class)]
@@ -63,7 +62,7 @@ final class Put extends AbstractFOSRestController
 
         $form = $this->formFactory->submitRequest(GroupType::class, $request, $group);
         if (!$form->isValid()) {
-            return $this->view((array)$form->getErrors(), Response::HTTP_BAD_REQUEST);
+            return $this->view((array) $form->getErrors(), Response::HTTP_BAD_REQUEST);
         }
 
         $this->service->save($group);

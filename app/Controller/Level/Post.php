@@ -7,12 +7,11 @@ namespace KejawenLab\Application\Controller\Level;
 use FOS\RestBundle\Controller\AbstractFOSRestController;
 use FOS\RestBundle\Controller\Annotations\Post as Route;
 use FOS\RestBundle\View\View;
-use KejawenLab\Application\Entity\Level;
-use KejawenLab\Application\Form\LevelType;
-use KejawenLab\Application\Level\Model\LevelInterface;
-use KejawenLab\Application\Level\LevelService;
 use KejawenLab\ApiSkeleton\Form\FormFactory;
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
+use KejawenLab\Application\Entity\Level;
+use KejawenLab\Application\Form\LevelType;
+use KejawenLab\Application\Level\LevelService;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use Nelmio\ApiDocBundle\Attribute\Security;
 use OpenApi\Attributes as OA;
@@ -55,7 +54,6 @@ final class Post extends AbstractFOSRestController
             return $this->view((array) $form->getErrors(), Response::HTTP_BAD_REQUEST);
         }
 
-        /** @var LevelInterface $level */
         $level = $form->getData();
         $this->service->save($level);
 

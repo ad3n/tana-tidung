@@ -57,7 +57,7 @@ class Group implements GroupInterface
 
     public function getId(): ?string
     {
-        return (string)$this->id;
+        return (string) $this->id;
     }
 
     public function getCode(): ?string

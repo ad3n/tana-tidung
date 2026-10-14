@@ -7,12 +7,11 @@ namespace KejawenLab\Application\Controller\FiscalYear;
 use FOS\RestBundle\Controller\AbstractFOSRestController;
 use FOS\RestBundle\Controller\Annotations\Post as Route;
 use FOS\RestBundle\View\View;
-use KejawenLab\Application\Entity\FiscalYear;
-use KejawenLab\Application\Form\FiscalYearType;
-use KejawenLab\Application\FiscalYear\Model\FiscalYearInterface;
-use KejawenLab\Application\FiscalYear\FiscalYearService;
 use KejawenLab\ApiSkeleton\Form\FormFactory;
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
+use KejawenLab\Application\Entity\FiscalYear;
+use KejawenLab\Application\FiscalYear\FiscalYearService;
+use KejawenLab\Application\Form\FiscalYearType;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use Nelmio\ApiDocBundle\Attribute\Security;
 use OpenApi\Attributes as OA;
@@ -55,7 +54,6 @@ final class Post extends AbstractFOSRestController
             return $this->view((array) $form->getErrors(), Response::HTTP_BAD_REQUEST);
         }
 
-        /** @var FiscalYearInterface $fiscalyear */
         $fiscalyear = $form->getData();
         $this->service->save($fiscalyear);
 

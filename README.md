@@ -725,8 +725,15 @@ docker compose exec app php tests/item-conversions-smoke.php
 ## Transaksi dan stok
 
 Menu Transaksi mendukung penerimaan eksternal, transfer antar-SKPD/OPD, dan
-pengeluaran akhir melalui submenu Penerimaan, Transfer, dan Pengeluaran. Masing-masing
-submenu memfilter daftar dan menetapkan jenis transaksi pada form secara otomatis.
+pengeluaran akhir melalui submenu Penerimaan, Transfer, Pengeluaran, serta Stok Barang. Masing-masing
+submenu form menetapkan jenis transaksi secara otomatis. Daftar Penerimaan, Daftar
+Pengeluaran, dan Daftar Transfer berada pada submenu terpisah, masing-masing dengan
+pencarian dan pagination. Tombol Simpan menyimpan draft untuk diperiksa sebelum diproses.
+Form mengikuti susunan Sibaper lama: informasi transaksi di atas, tabel barang
+selebar halaman, dan Tambah Barang melalui modal. Header dan beberapa detail dapat
+disimpan sekaligus sebagai draft; kegagalan detail membatalkan seluruh penyimpanan.
+Transfer/pengeluaran menampilkan stok tersedia dalam satuan dasar sesuai SKPD asal.
+Simpan Draft belum mengubah stok; Kirim/Selesaikan tetap dilakukan setelah pemeriksaan.
 Hak operasi tetap mengikuti menu Transaksi; hak submenu mengatur tampilnya navigasi.
 Jalankan `app:transactions:install` untuk memperbarui menu database tanpa memuat ulang
 fixtures. Hak submenu yang baru dibuat menyalin hak Transaksi setiap group.
@@ -734,7 +741,7 @@ Tahun Anggaran berada paling atas pada menu Master.
 Nomor Batch yang kosong dibuat otomatis saat penerimaan diselesaikan dengan format
 `BATCH<YYYYMMDD><RANDOM5DIGIT>`, satu nomor unik per detail barang. Nomor yang diisi
 manual tetap dipertahankan; transfer mengikuti batch asal.
-Nomor Referensi wajib diisi untuk semua jenis transaksi, termasuk sebelum draft
+No Faktur wajib diisi untuk semua jenis transaksi, termasuk sebelum draft
 dikirim atau diselesaikan; nilai kosong atau hanya spasi ditolak.
 
 Nomor transaksi baru menggunakan `TRX<FiscalYear><SKPD_CODE><YYYYMMDD><RANDOM5DIGIT>`
@@ -854,3 +861,41 @@ docker compose exec app php -d memory_limit=512M tests/transactions-smoke.php
 Pengujian membuat akun khusus agar tidak mengeluarkan sesi admin pengguna, menguji
 akses lintas organisasi, FEFO, konversi snapshot, rollback, pembukuan bersamaan,
 serta halaman admin, kemudian membersihkan hanya data uji miliknya.
+
+### Batas stok dan pembagian batch
+
+Transfer dan pengeluaran memeriksa stok tersedia SKPD asal saat detail ditambahkan,
+saat header draft diubah, dan saat transaksi dikirim/diselesaikan. Jumlah semua
+baris barang yang sama dihitung setelah konversi ke satuan dasar. Draft tidak
+mereservasi stok; pengecekan ulang saat posting memakai lock database.
+
+Batch manual dibatasi pada saldo batch tersebut. Baris otomatis memakai FEFO,
+dengan batch kedaluwarsa terdekat lebih dahulu dan batch tanpa kedaluwarsa terakhir.
+Jika satu batch habis, sisa kebutuhan diambil dari batch berikutnya; setiap bagian
+dicatat sebagai alokasi tersendiri. Batch manual dipenuhi sebelum baris otomatis.
+Batch kedaluwarsa tidak dapat ditransfer, tetapi dapat dikeluarkan untuk penghapusan.
+
+## Gaya kode PHP
+
+Kode proyek mengikuti preset Symfony dari PHP CS Fixer. Class dipanggil melalui
+nama pendek dengan `use` import (alias digunakan jika perlu), satu import per
+baris, diurutkan alfabetis, dan import yang tidak dipakai dihapus. Alias namespace
+framework seperti `ORM` dan `OA` tetap digunakan untuk atribut.
+
+```sh
+docker compose exec app composer cs:fix
+docker compose exec app composer cs:check
+```
+
+Konfigurasi `.php-cs-fixer.dist.php` mencakup `app`, `lib`, `tests`, konfigurasi PHP,
+entrypoint, dan konfigurasi alat pengembangan. Vendor, cache, konfigurasi secrets,
+dan file konfigurasi yang dihasilkan otomatis tidak ikut diformat. Aturan risky
+dinonaktifkan agar perubahan berfokus pada gaya kode.
+
+Formatter juga mendaftarkan aturan `Sibaper/blank_line_after_control_block` untuk
+`app/`. `composer cs:fix` otomatis menambahkan satu baris kosong setelah blok
+kontrol sebelum statement berikutnya; `composer cs:check` gagal jika aturan itu
+belum dipenuhi. Rangkaian `else`/`elseif`, `catch`/`finally`, serta `do ... while`
+tetap menyatu, dan tidak ada tambahan baris kosong sebelum kurung penutup induk.
+Implementasi menggunakan AST PHP agar string, closure, dan atribut tidak dianggap
+sebagai blok kontrol. Pengujiannya berada di `tests/coding-style/`.

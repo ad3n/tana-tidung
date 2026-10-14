@@ -19,11 +19,10 @@ use Symfony\Component\Security\Http\Event\LogoutEvent;
 final readonly class LogoutSubscriber implements EventSubscriberInterface
 {
     public function __construct(
-        private UrlGeneratorInterface  $urlGenerator,
+        private UrlGeneratorInterface $urlGenerator,
         private CacheItemPoolInterface $cache,
         private EntityManagerInterface $entityManager,
-    )
-    {
+    ) {
     }
 
     /**

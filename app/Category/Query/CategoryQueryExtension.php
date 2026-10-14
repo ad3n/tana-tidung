@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Category\Query;
 
 use Doctrine\ORM\QueryBuilder;
-use KejawenLab\Application\Category\Model\CategoryInterface;
 use KejawenLab\ApiSkeleton\Pagination\Query\AbstractQueryExtension;
 use KejawenLab\ApiSkeleton\Util\StringUtil;
+use KejawenLab\Application\Category\Model\CategoryInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -24,7 +24,7 @@ final class CategoryQueryExtension extends AbstractQueryExtension
 
         $alias = $this->aliasHelper->findAlias('root');
         $queryBuilder->andWhere(sprintf('(UPPER(%s.name) LIKE :categorySearch)', $alias))
-            ->setParameter('categorySearch', '%' . StringUtil::uppercase($query) . '%');
+            ->setParameter('categorySearch', '%'.StringUtil::uppercase($query).'%');
     }
 
     public function support(string $class, Request $request): bool

@@ -28,11 +28,10 @@ final class Permission extends AbstractController
 {
     public function __construct(
         private readonly PermissionService $service,
-        private readonly GroupService      $groupService,
-        private readonly Paginator         $paginator,
-        private readonly SettingService    $settingService,
-    )
-    {
+        private readonly GroupService $groupService,
+        private readonly Paginator $paginator,
+        private readonly SettingService $settingService,
+    ) {
     }
 
     #[Route(path: '/groups/{id}/permissions', name: self::class, methods: ['GET'])]

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace KejawenLab\ApiSkeleton\Tests\EventSubscriber;
 
+use Doctrine\Bundle\DoctrineBundle\Attribute\AsEntityListener;
 use Doctrine\ORM\Event\PostLoadEventArgs;
 use Doctrine\ORM\Events;
 use KejawenLab\ApiSkeleton\Entity\Menu;
 use KejawenLab\ApiSkeleton\EventSubscriber\LoadUrlPathSubscriber;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -86,8 +88,8 @@ class LoadUrlPathSubscriberTest extends TestCase
 
     public function testListenerRegistration(): void
     {
-        $reflection = new \ReflectionClass(LoadUrlPathSubscriber::class);
-        $attributes = $reflection->getAttributes(\Doctrine\Bundle\DoctrineBundle\Attribute\AsEntityListener::class);
+        $reflection = new ReflectionClass(LoadUrlPathSubscriber::class);
+        $attributes = $reflection->getAttributes(AsEntityListener::class);
 
         $this->assertCount(1, $attributes);
         $this->assertSame(Events::postLoad, $attributes[0]->newInstance()->event);

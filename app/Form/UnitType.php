@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Form;
 
 use KejawenLab\Application\Entity\Unit;
-use KejawenLab\ApiSkeleton\Entity\EntityInterface;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
@@ -17,7 +17,7 @@ final class UnitType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
-        $builder->add('type', \Symfony\Component\Form\Extension\Core\Type\ChoiceType::class, [
+        $builder->add('type', ChoiceType::class, [
             'label' => 'Jenis Satuan',
             'empty_data' => '',
             'placeholder' => 'Pilih jenis satuan',

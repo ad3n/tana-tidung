@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace KejawenLab\ApiSkeleton\Security\Validator;
 
 use Attribute;
+use Override;
 use Symfony\Component\Validator\Constraint;
 
 /**
@@ -20,7 +21,7 @@ final class Route extends Constraint
         return 'validation.route.not_found';
     }
 
-    #[\Override]
+    #[Override]
     public function getTargets(): string
     {
         return self::PROPERTY_CONSTRAINT;

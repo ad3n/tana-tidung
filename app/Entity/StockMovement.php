@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Entity;
 
+use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
-use KejawenLab\Application\Transaction\Enum\{TransactionType, TransactionStatus};
+use Ramsey\Uuid\Uuid;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'stock_movements')]
@@ -18,7 +19,7 @@ class StockMovement
 
     public function __construct()
     {
-        $this->id = \Ramsey\Uuid\Uuid::uuid4()->toString();
+        $this->id = Uuid::uuid4()->toString();
     }
 
     public function getId(): string
@@ -48,7 +49,7 @@ class StockMovement
     private string $quantityDelta;
 
     #[ORM\Column(type: 'datetime_immutable')]
-    private \DateTimeImmutable $postedAt;
+    private DateTimeImmutable $postedAt;
 
     public function getAllocation(): TransactionItemAllocation
     {
@@ -110,12 +111,12 @@ class StockMovement
         $this->quantityDelta = $quantityDelta;
     }
 
-    public function getPostedAt(): \DateTimeImmutable
+    public function getPostedAt(): DateTimeImmutable
     {
         return $this->postedAt;
     }
 
-    public function setPostedAt(\DateTimeImmutable $postedAt): void
+    public function setPostedAt(DateTimeImmutable $postedAt): void
     {
         $this->postedAt = $postedAt;
     }

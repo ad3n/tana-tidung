@@ -28,11 +28,10 @@ use Vich\UploaderBundle\Mapping\PropertyMappingFactory;
 final class Get extends AbstractFOSRestController
 {
     public function __construct(
-        private readonly MediaService           $service,
+        private readonly MediaService $service,
         private readonly PropertyMappingFactory $mapping,
-        private readonly TranslatorInterface    $translator,
-    )
-    {
+        private readonly TranslatorInterface $translator,
+    ) {
     }
 
     #[Route(data: '/medias/{path}', name: self::class, requirements: ['path' => '.+'])]

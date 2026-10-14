@@ -17,29 +17,27 @@ function request(string $path, int $expected, string $method = 'GET', string $pa
         'follow_location' => 0,
         'timeout' => 30,
     ]]);
-    $body = file_get_contents($base . $path, false, $context);
+    $body = file_get_contents($base.$path, false, $context);
     $responseHeaders = $http_response_header ?? [];
     preg_match('/\s(\d{3})\s/', $responseHeaders[0] ?? '', $matches);
     $status = (int) ($matches[1] ?? 0);
     echo sprintf("%s %s %d\n", $method, $path, $status);
 
-    if ($status !== $expected || $body === false) {
+    if ($status !== $expected || false === $body) {
         throw new RuntimeException(sprintf('%s %s: expected HTTP %d, got %d', $method, $path, $expected, $status));
     }
 
     return [$body, $responseHeaders];
 }
 
-
-
 function moduleRequest(string $path, int $status, string $method = 'GET', array $data = []): array
 {
     global $token;
-    [$body] = request('/api/' . $path . (str_contains($path, '?') ? '&' : '?') . 'dcq=1', $status, $method,
+    [$body] = request('/api/'.$path.(str_contains($path, '?') ? '&' : '?').'dcq=1', $status, $method,
         $data ? json_encode($data, JSON_THROW_ON_ERROR) : '',
-        ['Content-Type: application/json', 'Authorization: Bearer ' . $token]);
+        ['Content-Type: application/json', 'Authorization: Bearer '.$token]);
 
-    return $body === '' ? [] : json_decode($body, true, flags: JSON_THROW_ON_ERROR);
+    return '' === $body ? [] : json_decode($body, true, flags: JSON_THROW_ON_ERROR);
 }
 
 function checkModule(bool $condition, string $message): void
@@ -52,17 +50,18 @@ function checkModule(bool $condition, string $message): void
 [$login] = request('/api/login', 200, 'POST', json_encode(['username' => 'admin', 'password' => 'admin']), ['Content-Type: application/json']);
 $token = json_decode($login, true, flags: JSON_THROW_ON_ERROR)['token'];
 
-
 $suffix = strtoupper(bin2hex(random_bytes(5)));
 $created = [];
 try {
-    foreach (['categories', 'items'] as $module) request('/api/' . $module, 401);
+    foreach (['categories', 'items'] as $module) {
+        request('/api/'.$module, 401);
+    }
     moduleRequest('categories', 400, 'POST', ['name' => '']);
-    $unit = moduleRequest('units', 201, 'POST', ['code' => 'U' . $suffix, 'name' => 'Unit ' . $suffix, 'type' => 'count']);
-    $created['units'] = 'units/' . $unit['id'];
-    $category = moduleRequest('categories', 201, 'POST', ['name' => 'Category ' . $suffix]);
-    $created['categories'] = 'categories/' . $category['id'];
-    $data = ['unit' => $unit['id'], 'category' => $category['id'], 'code' => 'I' . $suffix, 'name' => 'Item ' . $suffix, 'status' => true];
+    $unit = moduleRequest('units', 201, 'POST', ['code' => 'U'.$suffix, 'name' => 'Unit '.$suffix, 'type' => 'count']);
+    $created['units'] = 'units/'.$unit['id'];
+    $category = moduleRequest('categories', 201, 'POST', ['name' => 'Category '.$suffix]);
+    $created['categories'] = 'categories/'.$category['id'];
+    $data = ['unit' => $unit['id'], 'category' => $category['id'], 'code' => 'I'.$suffix, 'name' => 'Item '.$suffix, 'status' => true];
     foreach (['category', 'unit', 'code', 'name'] as $field) {
         $invalid = $data;
         unset($invalid[$field]);
@@ -72,37 +71,41 @@ try {
     $invalid['category'] = '00000000-0000-4000-8000-000000000000';
     moduleRequest('items', 400, 'POST', $invalid);
     $item = moduleRequest('items', 201, 'POST', $data);
-    $created['items'] = 'items/' . $item['id'];
-    checkModule($item['category']['id'] === $category['id'] && $item['status'] === true, 'Item relation/status incorrect');
+    $created['items'] = 'items/'.$item['id'];
+    checkModule($item['category']['id'] === $category['id'] && true === $item['status'], 'Item relation/status incorrect');
     moduleRequest('items', 400, 'POST', $data);
     $data['status'] = false;
-    checkModule(moduleRequest($created['items'], 200, 'PUT', $data)['status'] === false, 'Non-expirable status failed');
-    checkModule(moduleRequest('items?q=' . $data['code'], 200)['total_item'] === 1, 'Item code search failed');
+    checkModule(false === moduleRequest($created['items'], 200, 'PUT', $data)['status'], 'Non-expirable status failed');
+    checkModule(1 === moduleRequest('items?q='.$data['code'], 200)['total_item'], 'Item code search failed');
     foreach ($created as $module => $path) {
         moduleRequest($path, 200);
-        moduleRequest($path . '/audit', 200);
-        checkModule(moduleRequest($module . '?q=' . $suffix, 200)['total_item'] === 1, 'Name search failed');
-        checkModule(moduleRequest($module . '?q=missing' . $suffix, 200)['total_item'] === 0, 'Search filtering failed');
+        moduleRequest($path.'/audit', 200);
+        checkModule(1 === moduleRequest($module.'?q='.$suffix, 200)['total_item'], 'Name search failed');
+        checkModule(0 === moduleRequest($module.'?q=missing'.$suffix, 200)['total_item'], 'Search filtering failed');
     }
     [, $headers] = request('/admin/', 302, 'POST', http_build_query(['_username' => 'admin', '_password' => 'admin']), ['Content-Type: application/x-www-form-urlencoded']);
     $cookies = [];
     foreach ($headers as $header) {
-        if (stripos($header, 'Set-Cookie: ') === 0) $cookies[] = explode(';', substr($header, 12))[0];
+        if (0 === stripos($header, 'Set-Cookie: ')) {
+            $cookies[] = explode(';', substr($header, 12))[0];
+        }
     }
-    $headers = ['Cookie: ' . implode('; ', $cookies), 'Content-Type: application/x-www-form-urlencoded'];
+    $headers = ['Cookie: '.implode('; ', $cookies), 'Content-Type: application/x-www-form-urlencoded'];
     foreach (['categories' => 'category', 'items' => 'item'] as $module => $formName) {
-        request('/admin/' . $created[$module], 200, headers: $headers);
-        request('/admin/' . $created[$module] . '/edit', 302, headers: $headers);
-        request('/admin/' . $module, 200, headers: $headers);
-        $payload = $module === 'items' ? $data : ['name' => 'Updated category ' . $suffix];
-        request('/admin/' . $module, 303, 'POST', http_build_query([$formName => $payload]), $headers);
-        [$html] = request('/admin/' . $module, 200, headers: $headers);
+        request('/admin/'.$created[$module], 200, headers: $headers);
+        request('/admin/'.$created[$module].'/edit', 302, headers: $headers);
+        request('/admin/'.$module, 200, headers: $headers);
+        $payload = 'items' === $module ? $data : ['name' => 'Updated category '.$suffix];
+        request('/admin/'.$module, 303, 'POST', http_build_query([$formName => $payload]), $headers);
+        [$html] = request('/admin/'.$module, 200, headers: $headers);
         $dom = new DOMDocument();
         @$dom->loadHTML($html);
-        checkModule($dom->getElementById($formName . '_name')->getAttribute('value') === '', 'Form not reset');
+        checkModule('' === $dom->getElementById($formName.'_name')->getAttribute('value'), 'Form not reset');
         $xpath = new DOMXPath($dom);
-        checkModule($xpath->query('//li[contains(@class,"has-treeview")][a/p[contains(text(),"Master")]]//a[@href="/admin/' . $module . '"]')->length === 1, 'Menu missing below Master');
-        if ($module === 'items') checkModule($xpath->query('//span[contains(@class,"btn-dark")][text()="Tidak Kedaluwarsa"]')->length > 0, 'Status badge missing');
+        checkModule(1 === $xpath->query('//li[contains(@class,"has-treeview")][a/p[contains(text(),"Master")]]//a[@href="/admin/'.$module.'"]')->length, 'Menu missing below Master');
+        if ('items' === $module) {
+            checkModule($xpath->query('//span[contains(@class,"btn-dark")][text()="Tidak Kedaluwarsa"]')->length > 0, 'Status badge missing');
+        }
     }
 } finally {
     [$login] = request('/api/login', 200, 'POST', json_encode(['username' => 'admin', 'password' => 'admin']), ['Content-Type: application/json']);

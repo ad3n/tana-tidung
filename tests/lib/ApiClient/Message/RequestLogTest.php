@@ -8,6 +8,7 @@ use KejawenLab\ApiSkeleton\ApiClient\Message\RequestLog;
 use KejawenLab\ApiSkeleton\ApiClient\Model\ApiClientInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * @author Muhamad Surya Iksanudin<surya.iksanudin@gmail.com>
@@ -21,7 +22,7 @@ class RequestLogTest extends TestCase
 
         $request = Request::createFromGlobals();
 
-        $requestLog = new RequestLog($apiClient, $request, new \Symfony\Component\HttpFoundation\Response('test', 201));
+        $requestLog = new RequestLog($apiClient, $request, new Response('test', 201));
 
         $this->assertSame('test', $requestLog->getApiClientId());
         $this->assertSame($request->headers->all(), $requestLog->getHeaders());
@@ -38,7 +39,7 @@ class RequestLogTest extends TestCase
         $request = Request::createFromGlobals();
         $request->query->set('test', true);
 
-        $requestLog = new RequestLog($apiClient, $request, new \Symfony\Component\HttpFoundation\Response('test', 201));
+        $requestLog = new RequestLog($apiClient, $request, new Response('test', 201));
 
         $this->assertSame('test', $requestLog->getApiClientId());
         $this->assertSame($request->headers->all(), $requestLog->getHeaders());

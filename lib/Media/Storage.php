@@ -6,6 +6,7 @@ namespace KejawenLab\ApiSkeleton\Media;
 
 use KejawenLab\ApiSkeleton\Media\Model\MediaInterface;
 use LogicException;
+use Override;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Vich\UploaderBundle\Mapping\PropertyMappingInterface;
@@ -15,7 +16,7 @@ use Vich\UploaderBundle\Mapping\PropertyMappingInterface;
  */
 final class Storage extends AbstractStorage
 {
-    #[\Override]
+    #[Override]
     public function remove($obj, PropertyMappingInterface $mapping, ?string $forcedFilename = null): ?bool
     {
         if (!$obj instanceof MediaInterface) {
@@ -23,14 +24,14 @@ final class Storage extends AbstractStorage
         }
 
         $name = $mapping->getFileName($obj);
-        if ($name === null || $name === '') {
+        if (null === $name || '' === $name) {
             return false;
         }
 
         return $this->doRemove($mapping, $this->getUploadDir($obj, $mapping), $name);
     }
 
-    #[\Override]
+    #[Override]
     public function upload($obj, PropertyMappingInterface $mapping): void
     {
         if (!$obj instanceof MediaInterface) {
@@ -40,7 +41,7 @@ final class Storage extends AbstractStorage
         }
 
         $file = $mapping->getFile($obj);
-        if (!($file instanceof UploadedFile)) {
+        if (!$file instanceof UploadedFile) {
             throw new LogicException('No uploadable file found');
         }
 
@@ -51,9 +52,9 @@ final class Storage extends AbstractStorage
         $mapping->writeProperty($obj, 'originalName', $file->getClientOriginalName());
 
         if (
-            str_contains((string)$file->getMimeType(), 'image/') &&
-            'image/svg+xml' !== $file->getMimeType() &&
-            false !== $dimensions = getimagesize($file->getRealPath())
+            str_contains((string) $file->getMimeType(), 'image/')
+            && 'image/svg+xml' !== $file->getMimeType()
+            && false !== $dimensions = getimagesize($file->getRealPath())
         ) {
             $mapping->writeProperty($obj, 'dimensions', array_splice($dimensions, 0, 2));
         }
@@ -90,7 +91,7 @@ final class Storage extends AbstractStorage
         );
     }
 
-    #[\Override]
+    #[Override]
     public function resolveUri($obj, ?string $fieldName = null, ?string $className = null): ?string
     {
         if (!$obj instanceof MediaInterface) {

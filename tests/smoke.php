@@ -17,13 +17,13 @@ function request(string $path, int $expected, string $method = 'GET', string $pa
         'follow_location' => 0,
         'timeout' => 30,
     ]]);
-    $body = file_get_contents($base . $path, false, $context);
+    $body = file_get_contents($base.$path, false, $context);
     $responseHeaders = $http_response_header ?? [];
     preg_match('/\s(\d{3})\s/', $responseHeaders[0] ?? '', $matches);
     $status = (int) ($matches[1] ?? 0);
     echo sprintf("%s %s %d\n", $method, $path, $status);
 
-    if ($status !== $expected || $body === false) {
+    if ($status !== $expected || false === $body) {
         throw new RuntimeException(sprintf('%s %s: expected HTTP %d, got %d', $method, $path, $expected, $status));
     }
 
@@ -41,12 +41,12 @@ request('/api/me', 401);
     'password' => 'admin',
 ], JSON_THROW_ON_ERROR), ['Content-Type: application/json']);
 $token = json_decode($body, true, flags: JSON_THROW_ON_ERROR)['token'] ?? null;
-if (!is_string($token) || $token === '') {
+if (!is_string($token) || '' === $token) {
     throw new RuntimeException('Login did not return a JWT.');
 }
 
 foreach (['/api/me', '/api/me/menus', '/api/groups', '/api/users', '/api/settings'] as $path) {
-    request($path, 200, headers: ['Authorization: Bearer ' . $token]);
+    request($path, 200, headers: ['Authorization: Bearer '.$token]);
 }
 
 [, $headers] = request('/admin/', 302, 'POST', http_build_query([
@@ -55,13 +55,13 @@ foreach (['/api/me', '/api/me/menus', '/api/groups', '/api/users', '/api/setting
 ]), ['Content-Type: application/x-www-form-urlencoded']);
 $cookies = [];
 foreach ($headers as $header) {
-    if (stripos($header, 'Set-Cookie: ') === 0) {
+    if (0 === stripos($header, 'Set-Cookie: ')) {
         $cookies[] = explode(';', substr($header, 12))[0];
     }
 }
 
 foreach (['/admin/', '/admin/users', '/admin/groups', '/admin/settings'] as $path) {
-    request($path, 200, headers: ['Cookie: ' . implode('; ', $cookies)]);
+    request($path, 200, headers: ['Cookie: '.implode('; ', $cookies)]);
 }
 request('/api/me', 401);
 request('/admin/', 302);

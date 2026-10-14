@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Form;
 
-use KejawenLab\Application\Entity\Item;
 use KejawenLab\ApiSkeleton\Entity\EntityInterface;
+use KejawenLab\Application\Entity\Item;
+use KejawenLab\Application\Entity\Unit;
+use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -41,8 +43,8 @@ final class ItemType extends AbstractType
             'required' => true,
             'label' => 'sas.form.field.item.name',
         ]);
-        $builder->add('unit', \Symfony\Bridge\Doctrine\Form\Type\EntityType::class, [
-            'class' => \KejawenLab\Application\Entity\Unit::class,
+        $builder->add('unit', EntityType::class, [
+            'class' => Unit::class,
             'choice_label' => 'name',
             'label' => 'Satuan Dasar',
             'placeholder' => 'Pilih satuan dasar',

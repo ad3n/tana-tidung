@@ -21,10 +21,9 @@ final class PasswordMatchValidator extends ConstraintValidator
 {
     public function __construct(
         private readonly UserPasswordHasherInterface $encoder,
-        private readonly TokenStorageInterface       $tokenStorage,
-        private readonly TranslatorInterface         $translator,
-    )
-    {
+        private readonly TokenStorageInterface $tokenStorage,
+        private readonly TranslatorInterface $translator,
+    ) {
     }
 
     public function validate($value, Constraint $constraint): void

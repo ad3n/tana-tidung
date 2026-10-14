@@ -7,12 +7,11 @@ namespace KejawenLab\Application\Controller\Employee;
 use FOS\RestBundle\Controller\AbstractFOSRestController;
 use FOS\RestBundle\Controller\Annotations\Post as Route;
 use FOS\RestBundle\View\View;
-use KejawenLab\Application\Entity\Employee;
-use KejawenLab\Application\Form\EmployeeType;
-use KejawenLab\Application\Employee\Model\EmployeeInterface;
-use KejawenLab\Application\Employee\EmployeeService;
 use KejawenLab\ApiSkeleton\Form\FormFactory;
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
+use KejawenLab\Application\Employee\EmployeeService;
+use KejawenLab\Application\Entity\Employee;
+use KejawenLab\Application\Form\EmployeeType;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use Nelmio\ApiDocBundle\Attribute\Security;
 use OpenApi\Attributes as OA;
@@ -55,7 +54,6 @@ final class Post extends AbstractFOSRestController
             return $this->view((array) $form->getErrors(), Response::HTTP_BAD_REQUEST);
         }
 
-        /** @var EmployeeInterface $employee */
         $employee = $form->getData();
         $this->service->save($employee);
 

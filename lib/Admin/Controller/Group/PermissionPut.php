@@ -6,7 +6,6 @@ namespace KejawenLab\ApiSkeleton\Admin\Controller\Group;
 
 use KejawenLab\ApiSkeleton\Admin\Controller\Group\Permission as GetPermission;
 use KejawenLab\ApiSkeleton\Entity\Permission as Entity;
-use KejawenLab\ApiSkeleton\Security\Annotation as Semart;
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
 use KejawenLab\ApiSkeleton\Security\Service\GroupService;
 use KejawenLab\ApiSkeleton\Security\Service\PermissionService;
@@ -19,7 +18,7 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * @author Muhamad Surya Iksanudin<surya.iksanudin@gmail.com>
  */
-#[Semart\Permission(menu: 'GROUP', actions: [Semart\Permission::EDIT, Semart\Permission::ADD])]
+#[Permission(menu: 'GROUP', actions: [Permission::EDIT, Permission::ADD])]
 final class PermissionPut extends AbstractController
 {
     public function __construct(private readonly GroupService $groupService, private readonly PermissionService $service)

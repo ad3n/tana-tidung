@@ -27,9 +27,8 @@ final class Main extends AbstractController
         private readonly RequestStack $requestStack,
         private readonly GroupService $service,
         private readonly CacheFactory $cache,
-        private readonly Paginator    $paginator,
-    )
-    {
+        private readonly Paginator $paginator,
+    ) {
         parent::__construct($this->requestStack->getCurrentRequest(), $this->service, $this->cache, $this->paginator);
     }
 
@@ -38,17 +37,17 @@ final class Main extends AbstractController
     {
         $group = new Group();
         if ($request->isMethod(Request::METHOD_POST)) {
-            $id = $request->getSession()->get('admin_edit.' . self::class);
+            $id = $request->getSession()->get('admin_edit.'.self::class);
             if (null !== $id) {
                 $group = $this->service->get($id);
             }
         } else {
-            $request->getSession()->remove('admin_edit.' . self::class);
-            $flashes = $request->getSession()->getFlashBag()->get('admin_edit.' . self::class);
+            $request->getSession()->remove('admin_edit.'.self::class);
+            $flashes = $request->getSession()->getFlashBag()->get('admin_edit.'.self::class);
             foreach ($flashes as $flash) {
                 $group = $this->service->get($flash);
                 if (null !== $group) {
-                    $request->getSession()->set('admin_edit.' . self::class, $group->getId());
+                    $request->getSession()->set('admin_edit.'.self::class, $group->getId());
 
                     break;
                 }
@@ -61,7 +60,7 @@ final class Main extends AbstractController
             if ($form->isValid()) {
                 $this->service->save($form->getData());
                 $this->addFlash('info', 'sas.page.group.saved');
-                $request->getSession()->remove('admin_edit.' . self::class);
+                $request->getSession()->remove('admin_edit.'.self::class);
 
                 return $this->redirectToRoute(self::class, $request->query->all(), Response::HTTP_SEE_OTHER);
             }

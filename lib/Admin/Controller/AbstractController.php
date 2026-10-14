@@ -23,12 +23,11 @@ use Symfony\Component\HttpFoundation\Response;
 abstract class AbstractController extends Base
 {
     public function __construct(
-        private readonly Request          $request,
+        private readonly Request $request,
         private readonly ServiceInterface $service,
-        private readonly CacheFactory     $cache,
-        private readonly ?Paginator       $paginator = null,
-    )
-    {
+        private readonly CacheFactory $cache,
+        private readonly ?Paginator $paginator = null,
+    ) {
     }
 
     protected function renderAudit(Audit $audit, ReflectionClass $class): Response

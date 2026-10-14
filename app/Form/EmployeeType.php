@@ -4,23 +4,23 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Form;
 
-use KejawenLab\Application\Entity\Employee;
 use KejawenLab\ApiSkeleton\Entity\EntityInterface;
-use KejawenLab\Application\Employee\EmployeeChoices;
 use KejawenLab\ApiSkeleton\Entity\Group;
+use KejawenLab\ApiSkeleton\Security\Validator\PasswordLength;
+use KejawenLab\Application\Employee\EmployeeChoices;
+use KejawenLab\Application\Entity\Employee;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
-use Symfony\Component\Form\FormEvent;
-use Symfony\Component\Form\FormEvents;
-use Symfony\Component\Form\FormError;
-use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
-use Symfony\Component\Validator\Constraints\NotBlank;
-use KejawenLab\ApiSkeleton\Security\Validator\PasswordLength;
-use Symfony\Component\Validator\Constraints\NotNull;
-use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormError;
+use Symfony\Component\Form\FormEvent;
+use Symfony\Component\Form\FormEvents;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Component\Validator\Constraints\NotBlank;
+use Symfony\Component\Validator\Constraints\NotNull;
 
 /**
  * @author Muhamad Surya Iksanudin<surya.iksanudin@gmail.com>
@@ -84,12 +84,13 @@ final class EmployeeType extends AbstractType
         ]);
         foreach (['username' => TextType::class, 'email' => EmailType::class] as $field => $type) {
             $builder->add($field, $type, [
-                'property_path' => 'user.' . $field,
+                'property_path' => 'user.'.$field,
                 'required' => true,
                 'empty_data' => '',
-                'label' => 'sas.form.field.employee.' . $field,
+                'label' => 'sas.form.field.employee.'.$field,
             ]);
         }
+
         $builder->add('plainPassword', PasswordType::class, ['mapped' => false]);
         $protectedUser = false;
         $builder->addEventListener(FormEvents::PRE_SET_DATA, function (FormEvent $event) use (&$protectedUser): void {
@@ -114,7 +115,7 @@ final class EmployeeType extends AbstractType
             $employee = $event->getData();
             $employee->getUser()->setFullName($employee->getName() ?? '');
             $password = $event->getForm()->get('plainPassword')->getData();
-            if (is_string($password) && $password !== '') {
+            if (is_string($password) && '' !== $password) {
                 $event->getData()->getUser()->setPlainPassword($password);
             }
         });

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Item;
 
-use KejawenLab\Application\Item\Model\ItemRepositoryInterface;
+use KejawenLab\ApiSkeleton\Entity\EntityInterface;
 use KejawenLab\ApiSkeleton\Pagination\AliasHelper;
 use KejawenLab\ApiSkeleton\Service\AbstractService;
 use KejawenLab\ApiSkeleton\Service\Model\ServiceInterface;
+use KejawenLab\Application\Item\Model\ItemRepositoryInterface;
+use KejawenLab\Application\Transaction\TransactionReferenceGuard;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
@@ -15,15 +17,17 @@ use Symfony\Component\Messenger\MessageBusInterface;
  */
 final class ItemService extends AbstractService implements ServiceInterface
 {
-    public function __construct(MessageBusInterface $messageBus, ItemRepositoryInterface $repository, AliasHelper $aliasHelper, private \KejawenLab\Application\Transaction\TransactionReferenceGuard $transactionGuard)
+    public function __construct(MessageBusInterface $messageBus, ItemRepositoryInterface $repository, AliasHelper $aliasHelper, private TransactionReferenceGuard $transactionGuard)
     {
         parent::__construct($messageBus, $repository, $aliasHelper);
     }
-    public function remove(\KejawenLab\ApiSkeleton\Entity\EntityInterface $object): void
+
+    public function remove(EntityInterface $object): void
     {
         $this->transactionGuard->remove($object, fn () => parent::remove($object));
     }
-    public function save(\KejawenLab\ApiSkeleton\Entity\EntityInterface $object): void
+
+    public function save(EntityInterface $object): void
     {
         $this->transactionGuard->saveItem($object, fn () => parent::save($object));
     }

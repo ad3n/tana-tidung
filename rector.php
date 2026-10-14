@@ -17,7 +17,7 @@ return static function (ContainerConfigurator $containerConfigurator): void {
     $containerConfigurator->import(SetList::DEAD_CODE);
     $containerConfigurator->import(LevelSetList::UP_TO_PHP_84);
     $containerConfigurator->import(SetList::EARLY_RETURN);
-    $containerConfigurator->import(Setlist::TYPE_DECLARATION);
+    $containerConfigurator->import(SetList::TYPE_DECLARATION);
     $containerConfigurator->import(SetList::TYPE_DECLARATION_STRICT);
     $containerConfigurator->import(SymfonyLevelSetList::SYMFONY_72);
 
@@ -30,14 +30,13 @@ return static function (ContainerConfigurator $containerConfigurator): void {
     $parameters->set(Option::PARALLEL, true);
     $parameters->set(Option::AUTO_IMPORT_NAMES, true);
     $parameters->set(Option::APPLY_AUTO_IMPORT_NAMES_ON_CHANGED_FILES_ONLY, true);
-    $parameters->set(Option::PATHS, [__DIR__ . '/lib']);
+    $parameters->set(Option::PATHS, [__DIR__.'/lib']);
 
     $parameters->set(Option::SKIP, [
         // follow convention, eg: Twig extension @see https://symfony.com/doc/current/templating/twig_extension.html
         CallableThisArrayToAnonymousFunctionRector::class => [
-            __DIR__ . '/lib/*/Twig*',
-            __DIR__ . '/lib/*/*Extension.php',
+            __DIR__.'/lib/*/Twig*',
+            __DIR__.'/lib/*/*Extension.php',
         ],
     ]);
 };
-

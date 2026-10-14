@@ -34,7 +34,7 @@ final class PasswordHistoryRepository extends AbstractRepository implements Pass
     {
         $deviceId = $this->getDeviceId();
         $cacheLifetime = self::MICRO_CACHE;
-        if ($deviceId !== '') {
+        if ('' !== $deviceId) {
             $cacheLifetime = SemartApiSkeleton::QUERY_CACHE_LIFETIME;
         }
 

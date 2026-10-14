@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Admin\Controller\Organization;
 
 use KejawenLab\ApiSkeleton\Admin\Controller\AbstractController;
-use KejawenLab\Application\Entity\Organization;
-use KejawenLab\Application\Form\OrganizationType;
-use KejawenLab\Application\Organization\OrganizationService;
 use KejawenLab\ApiSkeleton\Pagination\Paginator;
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
 use KejawenLab\ApiSkeleton\Util\CacheFactory;
+use KejawenLab\Application\Entity\Organization;
+use KejawenLab\Application\Form\OrganizationType;
+use KejawenLab\Application\Organization\OrganizationService;
 use ReflectionClass;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -37,7 +37,7 @@ final class Main extends AbstractController
     {
         $organization = new Organization();
         if ($request->isMethod(Request::METHOD_POST)) {
-            $id = $request->getSession()->get('admin_edit.' . self::class);
+            $id = $request->getSession()->get('admin_edit.'.self::class);
             if (null !== $id) {
                 $organization = $this->service->get($id);
             }
@@ -48,7 +48,7 @@ final class Main extends AbstractController
             if ($form->isValid()) {
                 $this->service->save($form->getData());
                 $this->addFlash('info', 'sas.page.organization.saved');
-                $request->getSession()->remove('admin_edit.' . self::class);
+                $request->getSession()->remove('admin_edit.'.self::class);
 
                 return $this->redirectToRoute(self::class, $request->query->all(), Response::HTTP_SEE_OTHER);
             }
@@ -56,12 +56,12 @@ final class Main extends AbstractController
             return $this->renderList($form, $request, new ReflectionClass(Organization::class));
         }
 
-        $request->getSession()->remove('admin_edit.' . self::class);
-        $flashes = $request->getSession()->getFlashBag()->get('admin_edit.' . self::class);
+        $request->getSession()->remove('admin_edit.'.self::class);
+        $flashes = $request->getSession()->getFlashBag()->get('admin_edit.'.self::class);
         foreach ($flashes as $flash) {
             $organization = $this->service->get($flash);
             if (null !== $organization) {
-                $request->getSession()->set('admin_edit.' . self::class, $organization->getId());
+                $request->getSession()->set('admin_edit.'.self::class, $organization->getId());
 
                 break;
             }

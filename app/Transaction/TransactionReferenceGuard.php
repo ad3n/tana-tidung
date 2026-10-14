@@ -6,8 +6,12 @@ namespace KejawenLab\Application\Transaction;
 
 use Doctrine\ORM\EntityManagerInterface;
 use KejawenLab\ApiSkeleton\Entity\EntityInterface;
-use KejawenLab\Application\Entity\{Item, Unit, Organization, Source};
+use KejawenLab\Application\Entity\Item;
+use KejawenLab\Application\Entity\Organization;
+use KejawenLab\Application\Entity\Source;
+use KejawenLab\Application\Entity\Unit;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Throwable;
 
 final class TransactionReferenceGuard
 {
@@ -28,6 +32,7 @@ final class TransactionReferenceGuard
             if ($query && $this->em->getConnection()->fetchOne($query, ['id' => $object->getId()])) {
                 throw new ConflictHttpException('Data sudah digunakan dalam transaksi dan tidak dapat dihapus.');
             }
+
             $remove();
         });
     }
@@ -41,6 +46,7 @@ final class TransactionReferenceGuard
                     throw new ConflictHttpException('Satuan dasar tidak dapat diubah setelah barang memiliki transaksi.');
                 }
             }
+
             $save();
         });
     }
@@ -53,7 +59,7 @@ final class TransactionReferenceGuard
             $db->executeQuery('SELECT pg_advisory_xact_lock(74261015)');
             $operation();
             $db->commit();
-        } catch (\Throwable $error) {
+        } catch (Throwable $error) {
             $db->rollBack();
             throw $error;
         }

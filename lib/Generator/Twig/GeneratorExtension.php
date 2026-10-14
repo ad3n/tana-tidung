@@ -6,6 +6,7 @@ namespace KejawenLab\ApiSkeleton\Generator\Twig;
 
 use Iterator;
 use KejawenLab\ApiSkeleton\Util\StringUtil;
+use Override;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
 
@@ -17,7 +18,7 @@ final class GeneratorExtension extends AbstractExtension
     /**
      * @return Iterator<TwigFilter>
      */
-    #[\Override]
+    #[Override]
     public function getFilters(): iterable
     {
         yield new TwigFilter('pluralize', [$this, 'pluralize']);

@@ -66,7 +66,7 @@ class Media implements MediaInterface
 
     public function getId(): ?string
     {
-        return (string)$this->id;
+        return (string) $this->id;
     }
 
     public function getFileName(): ?string

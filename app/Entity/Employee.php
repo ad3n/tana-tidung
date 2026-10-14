@@ -5,20 +5,20 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use KejawenLab\ApiSkeleton\Entity\User;
-use KejawenLab\ApiSkeleton\Security\Model\UserInterface;
-use KejawenLab\Application\Level\Model\LevelInterface;
-use KejawenLab\Application\Organization\Model\OrganizationInterface;
-use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Gedmo\Blameable\Traits\BlameableEntity;
 use Gedmo\Mapping\Annotation as Gedmo;
 use Gedmo\SoftDeleteable\Traits\SoftDeleteableEntity;
 use Gedmo\Timestampable\Traits\TimestampableEntity;
+use KejawenLab\ApiSkeleton\Entity\User;
+use KejawenLab\ApiSkeleton\Security\Model\UserInterface;
 use KejawenLab\Application\Employee\Model\EmployeeInterface;
+use KejawenLab\Application\Level\Model\LevelInterface;
+use KejawenLab\Application\Organization\Model\OrganizationInterface;
 use KejawenLab\Application\Repository\EmployeeRepository;
 use OpenApi\Attributes as OA;
 use Ramsey\Uuid\Doctrine\UuidGenerator;
 use Ramsey\Uuid\UuidInterface;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 

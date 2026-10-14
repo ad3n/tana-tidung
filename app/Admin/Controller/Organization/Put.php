@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Admin\Controller\Organization;
 
+use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
 use KejawenLab\Application\Organization\Model\OrganizationInterface;
 use KejawenLab\Application\Organization\OrganizationService;
-use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,7 +15,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * @author Muhamad Surya Iksanudin<surya.iksanudin@gmail.com>
-*/
+ */
 #[Permission(menu: 'ORGANIZATION', actions: [Permission::EDIT])]
 final class Put extends AbstractController
 {
@@ -33,7 +33,7 @@ final class Put extends AbstractController
             return new RedirectResponse($this->generateUrl(Main::class, $request->query->all()));
         }
 
-        $this->addFlash('admin_edit.' . Main::class, $organization->getId());
+        $this->addFlash('admin_edit.'.Main::class, $organization->getId());
 
         return new RedirectResponse($this->generateUrl(Main::class, $request->query->all()));
     }

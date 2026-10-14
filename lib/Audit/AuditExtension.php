@@ -6,6 +6,7 @@ namespace KejawenLab\ApiSkeleton\Audit;
 
 use DH\Auditor\Provider\Doctrine\Persistence\Reader\Reader;
 use Iterator;
+use Override;
 use ReflectionObject;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
@@ -22,7 +23,7 @@ final class AuditExtension extends AbstractExtension
     /**
      * @return Iterator<TwigFunction>
      */
-    #[\Override]
+    #[Override]
     public function getFunctions(): iterable
     {
         yield new TwigFunction('is_auditable', [$this, 'isAuditable']);

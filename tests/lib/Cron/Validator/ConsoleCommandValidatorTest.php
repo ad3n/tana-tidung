@@ -18,7 +18,6 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 class ConsoleCommandValidatorTest extends KernelTestCase
 {
-
     public function testInvalidConstraint(): void
     {
         $kernel = $this->createStub(KernelInterface::class);

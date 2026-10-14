@@ -19,10 +19,9 @@ final class GroupPermissionService implements PermissionInitiatorInterface, Perm
     private string $class;
 
     public function __construct(
-        private readonly MenuRepositoryInterface       $menuRepository,
+        private readonly MenuRepositoryInterface $menuRepository,
         private readonly PermissionRepositoryInterface $permissionRepository,
-    )
-    {
+    ) {
     }
 
     /**

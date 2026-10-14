@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace KejawenLab\ApiSkeleton\Cron;
 
 use Iterator;
+use Override;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
@@ -16,7 +17,7 @@ final class CronExtension extends AbstractExtension
     /**
      * @return Iterator<TwigFunction>
      */
-    #[\Override]
+    #[Override]
     public function getFunctions(): iterable
     {
         yield new TwigFunction('normalize_cron_log', [$this, 'normalize']);

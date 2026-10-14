@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\Request;
  */
 final class PermissionQueryExtension implements QueryExtensionInterface
 {
-    public function __construct(protected AliasHelper $aliasHelper)
+    public function __construct(private AliasHelper $aliasHelper)
     {
     }
 

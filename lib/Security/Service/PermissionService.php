@@ -32,19 +32,18 @@ final class PermissionService extends AbstractService implements ServiceInterfac
 
     /**
      * @param PermissionInitiatorInterface[] $initiators
-     * @param PermissionRemoverInterface[] $removers
+     * @param PermissionRemoverInterface[]   $removers
      */
     public function __construct(
-        private readonly EntityManagerInterface  $entityManager,
-        MessageBusInterface                      $messageBus,
-        PermissionRepositoryInterface            $repository,
-        AliasHelper                              $aliasHelper,
+        private readonly EntityManagerInterface $entityManager,
+        MessageBusInterface $messageBus,
+        PermissionRepositoryInterface $repository,
+        AliasHelper $aliasHelper,
         private readonly MenuRepositoryInterface $menuRepository,
-        private readonly iterable                $initiators,
-        private readonly iterable                $removers,
-        private readonly string                  $class,
-    )
-    {
+        private readonly iterable $initiators,
+        private readonly iterable $removers,
+        private readonly string $class,
+    ) {
         parent::__construct($messageBus, $repository, $aliasHelper);
     }
 

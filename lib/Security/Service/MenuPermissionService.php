@@ -19,10 +19,9 @@ final class MenuPermissionService implements PermissionInitiatorInterface, Permi
     private string $class;
 
     public function __construct(
-        private readonly GroupRepositoryInterface      $groupRepository,
+        private readonly GroupRepositoryInterface $groupRepository,
         private readonly PermissionRepositoryInterface $permissionRepository,
-    )
-    {
+    ) {
     }
 
     /**

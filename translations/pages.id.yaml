@@ -205,12 +205,12 @@ transaction.from: SKPD/OPD Asal
 transaction.to: SKPD/OPD Tujuan
 transaction.organization: SKPD/OPD
 transaction.source: Sumber Barang
-transaction.reference: Nomor Referensi
+transaction.reference: No Faktur
 transaction.notes: Catatan
 transaction.notes_help: Wajib diisi untuk pengeluaran akhir seperti rusak atau kedaluwarsa.
 transaction.choose: Pilih
-transaction.save_draft: Simpan Draft
-transaction.search: Cari nomor transaksi atau referensi
+transaction.save_draft: Simpan
+transaction.search: Cari nomor transaksi atau faktur
 transaction.view: Lihat
 transaction.back: Kembali
 transaction.empty: Belum ada transaksi.
@@ -247,3 +247,14 @@ transaction.list: Daftar Transaksi
 transaction.entry_help: Isi data transaksi, tambahkan barang, lalu simpan draft untuk diperiksa sebelum diproses.
 transaction.choose_origin: Pilih SKPD/OPD asal terlebih dahulu.
 transaction.no_available_stock: Tidak ada stok yang dapat digunakan untuk barang ini.
+transaction.insufficient_stock: Jumlah barang melebihi stok tersedia pada SKPD/OPD asal atau batch yang dipilih.
+transaction.batch_details: Rincian Batch
+transaction.taken_qty: Jumlah Diambil
+transaction.received_qty: Jumlah Diterima
+transaction.batch_pending: Rincian pengambilan batch tersedia setelah transaksi dikirim atau diselesaikan.
+transaction.list.1: Daftar Penerimaan
+transaction.list.2: Daftar Transfer
+transaction.list.3: Daftar Pengeluaran
+transaction.reference_sk: No SK
+transaction.search_sk: Cari nomor transaksi atau SK
+transaction.title_with_year: '%title% - Tahun Anggaran %year%'

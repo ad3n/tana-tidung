@@ -7,12 +7,11 @@ namespace KejawenLab\Application\Controller\Unit;
 use FOS\RestBundle\Controller\AbstractFOSRestController;
 use FOS\RestBundle\Controller\Annotations\Post as Route;
 use FOS\RestBundle\View\View;
-use KejawenLab\Application\Entity\Unit;
-use KejawenLab\Application\Form\UnitType;
-use KejawenLab\Application\Unit\Model\UnitInterface;
-use KejawenLab\Application\Unit\UnitService;
 use KejawenLab\ApiSkeleton\Form\FormFactory;
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
+use KejawenLab\Application\Entity\Unit;
+use KejawenLab\Application\Form\UnitType;
+use KejawenLab\Application\Unit\UnitService;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use Nelmio\ApiDocBundle\Attribute\Security;
 use OpenApi\Attributes as OA;
@@ -55,7 +54,6 @@ final class Post extends AbstractFOSRestController
             return $this->view((array) $form->getErrors(), Response::HTTP_BAD_REQUEST);
         }
 
-        /** @var UnitInterface $unit */
         $unit = $form->getData();
         $this->service->save($unit);
 

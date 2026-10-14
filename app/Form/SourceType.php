@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Form;
 
 use KejawenLab\Application\Entity\Source;
-use KejawenLab\ApiSkeleton\Entity\EntityInterface;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;

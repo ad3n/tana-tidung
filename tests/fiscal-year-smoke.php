@@ -1,6 +1,8 @@
 <?php
 
 declare(strict_types=1);
+use KejawenLab\ApiSkeleton\Kernel;
+use Symfony\Component\Dotenv\Dotenv;
 
 // Uses the development fixture account and removes records created by this check.
 $base = getenv('SMOKE_BASE_URL') ?: 'http://nginx';
@@ -17,29 +19,27 @@ function request(string $path, int $expected, string $method = 'GET', string $pa
         'follow_location' => 0,
         'timeout' => 30,
     ]]);
-    $body = file_get_contents($base . $path, false, $context);
+    $body = file_get_contents($base.$path, false, $context);
     $responseHeaders = $http_response_header ?? [];
     preg_match('/\s(\d{3})\s/', $responseHeaders[0] ?? '', $matches);
     $status = (int) ($matches[1] ?? 0);
     echo sprintf("%s %s %d\n", $method, $path, $status);
 
-    if ($status !== $expected || $body === false) {
+    if ($status !== $expected || false === $body) {
         throw new RuntimeException(sprintf('%s %s: expected HTTP %d, got %d', $method, $path, $expected, $status));
     }
 
     return [$body, $responseHeaders];
 }
 
-
-
 function moduleRequest(string $path, int $status, string $method = 'GET', array $data = []): array
 {
     global $token;
-    [$body] = request('/api/' . $path . (str_contains($path, '?') ? '&' : '?') . 'dcq=1', $status, $method,
+    [$body] = request('/api/'.$path.(str_contains($path, '?') ? '&' : '?').'dcq=1', $status, $method,
         $data ? json_encode($data, JSON_THROW_ON_ERROR) : '',
-        ['Content-Type: application/json', 'Authorization: Bearer ' . $token]);
+        ['Content-Type: application/json', 'Authorization: Bearer '.$token]);
 
-    return $body === '' ? [] : json_decode($body, true, flags: JSON_THROW_ON_ERROR);
+    return '' === $body ? [] : json_decode($body, true, flags: JSON_THROW_ON_ERROR);
 }
 
 function checkModule(bool $condition, string $message): void
@@ -52,10 +52,9 @@ function checkModule(bool $condition, string $message): void
 [$login] = request('/api/login', 200, 'POST', json_encode(['username' => 'admin', 'password' => 'admin']), ['Content-Type: application/json']);
 $token = json_decode($login, true, flags: JSON_THROW_ON_ERROR)['token'];
 
-
-require dirname(__DIR__) . '/vendor/autoload.php';
-(new Symfony\Component\Dotenv\Dotenv())->bootEnv(dirname(__DIR__) . '/.env');
-$kernel = new KejawenLab\ApiSkeleton\Kernel('dev', true);
+require dirname(__DIR__).'/vendor/autoload.php';
+(new Dotenv())->bootEnv(dirname(__DIR__).'/.env');
+$kernel = new Kernel('dev', true);
 $kernel->boot();
 $em = $kernel->getContainer()->get('doctrine')->getManager();
 $year = (int) $em->getConnection()->fetchOne('SELECT y FROM generate_series(8000,9999) y WHERE NOT EXISTS (SELECT 1 FROM fiscal_years f WHERE f.year=y) LIMIT 1');
@@ -67,40 +66,42 @@ try {
         moduleRequest('fiscal-years', 400, 'POST', ['year' => $invalid]);
     }
     $record = moduleRequest('fiscal-years', 201, 'POST', ['year' => $year]);
-    $path = 'fiscal-years/' . $record['id'];
-    checkModule($record['year'] === $year && $record['status'] === false, 'Default fiscal year invalid');
+    $path = 'fiscal-years/'.$record['id'];
+    checkModule($record['year'] === $year && false === $record['status'], 'Default fiscal year invalid');
     moduleRequest('fiscal-years', 400, 'POST', ['year' => $year]);
-    checkModule(moduleRequest($path, 200, 'PUT', ['year' => $year, 'status' => true])['status'] === true, 'Activation failed');
+    checkModule(true === moduleRequest($path, 200, 'PUT', ['year' => $year, 'status' => true])['status'], 'Activation failed');
     moduleRequest($path, 409, 'PUT', ['year' => $year, 'status' => false]);
-    moduleRequest('fiscal-years/' . $baseline['id'], 200, 'PUT', ['year' => $baseline['year'], 'status' => true]);
-    moduleRequest($path . '/audit', 200);
-    checkModule(moduleRequest('fiscal-years?q=' . $year, 200)['total_item'] === 1, 'Year search failed');
-    checkModule(moduleRequest('fiscal-years?q=invalid', 200)['total_item'] === 0, 'Search filtering failed');
+    moduleRequest('fiscal-years/'.$baseline['id'], 200, 'PUT', ['year' => $baseline['year'], 'status' => true]);
+    moduleRequest($path.'/audit', 200);
+    checkModule(1 === moduleRequest('fiscal-years?q='.$year, 200)['total_item'], 'Year search failed');
+    checkModule(0 === moduleRequest('fiscal-years?q=invalid', 200)['total_item'], 'Search filtering failed');
     [, $headers] = request('/admin/', 302, 'POST', http_build_query(['_username' => 'admin', '_password' => 'admin']), ['Content-Type: application/x-www-form-urlencoded']);
     $cookies = [];
     foreach ($headers as $header) {
-        if (stripos($header, 'Set-Cookie: ') === 0) $cookies[] = explode(';', substr($header, 12))[0];
+        if (0 === stripos($header, 'Set-Cookie: ')) {
+            $cookies[] = explode(';', substr($header, 12))[0];
+        }
     }
-    $headers = ['Cookie: ' . implode('; ', $cookies), 'Content-Type: application/x-www-form-urlencoded'];
-    request('/admin/' . $path . '/edit', 302, headers: $headers);
+    $headers = ['Cookie: '.implode('; ', $cookies), 'Content-Type: application/x-www-form-urlencoded'];
+    request('/admin/'.$path.'/edit', 302, headers: $headers);
     [$html] = request('/admin/fiscal-years', 200, headers: $headers);
     $dom = new DOMDocument();
     @$dom->loadHTML($html);
     $xpath = new DOMXPath($dom);
-    checkModule($xpath->query('//li[contains(@class,"has-treeview")][a/p[contains(text(),"Master")]]//a[@href="/admin/fiscal-years"]')->length === 1, 'Fiscal year missing from Master');
+    checkModule(1 === $xpath->query('//li[contains(@class,"has-treeview")][a/p[contains(text(),"Master")]]//a[@href="/admin/fiscal-years"]')->length, 'Fiscal year missing from Master');
     $yearInput = $xpath->query('//input[contains(@name,"[year]")]')->item(0);
     $formName = explode('[', $yearInput->getAttribute('name'))[0];
     request('/admin/fiscal-years', 303, 'POST', http_build_query([$formName => ['year' => $year, 'status' => '1']]), $headers);
     [$html] = request('/admin/fiscal-years', 200, headers: $headers);
     @$dom->loadHTML($html);
     $xpath = new DOMXPath($dom);
-    checkModule($xpath->query('//input[contains(@name,"[year]")]')->item(0)->getAttribute('value') === '', 'Form did not reset');
+    checkModule('' === $xpath->query('//input[contains(@name,"[year]")]')->item(0)->getAttribute('value'), 'Form did not reset');
     checkModule(str_contains($html, 'Daftar Tahun Anggaran'), 'Translation missing');
 } finally {
     if ($path) {
         [$login] = request('/api/login', 200, 'POST', json_encode(['username' => 'admin', 'password' => 'admin']), ['Content-Type: application/json']);
         $token = json_decode($login, true, flags: JSON_THROW_ON_ERROR)['token'];
-        moduleRequest('fiscal-years/' . $baseline['id'], 200, 'PUT', ['year' => $baseline['year'], 'status' => true]);
+        moduleRequest('fiscal-years/'.$baseline['id'], 200, 'PUT', ['year' => $baseline['year'], 'status' => true]);
         moduleRequest($path, 204, 'DELETE');
         moduleRequest($path, 404);
     }

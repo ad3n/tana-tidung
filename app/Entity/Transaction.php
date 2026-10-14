@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Entity;
 
+use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
-use KejawenLab\Application\Transaction\Enum\{TransactionType, TransactionStatus};
+use KejawenLab\ApiSkeleton\Entity\User;
+use KejawenLab\Application\Transaction\Enum\TransactionStatus;
+use KejawenLab\Application\Transaction\Enum\TransactionType;
+use Ramsey\Uuid\Uuid;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'transactions')]
@@ -17,7 +21,7 @@ class Transaction
 
     public function __construct()
     {
-        $this->id = \Ramsey\Uuid\Uuid::uuid4()->toString();
+        $this->id = Uuid::uuid4()->toString();
     }
 
     public function getId(): string
@@ -35,7 +39,7 @@ class Transaction
     private TransactionStatus $status = TransactionStatus::DRAFT;
 
     #[ORM\Column(type: 'date_immutable')]
-    private \DateTimeImmutable $date;
+    private DateTimeImmutable $date;
 
     #[ORM\ManyToOne(targetEntity: FiscalYear::class)]
     #[ORM\JoinColumn(nullable: false)]
@@ -59,33 +63,33 @@ class Transaction
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $notes = null;
 
-    #[ORM\ManyToOne(targetEntity: \KejawenLab\ApiSkeleton\Entity\User::class)]
+    #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: false)]
-    private \KejawenLab\ApiSkeleton\Entity\User $createdBy;
+    private User $createdBy;
 
     #[ORM\Column(type: 'datetime_immutable')]
-    private \DateTimeImmutable $createdAt;
+    private DateTimeImmutable $createdAt;
 
-    #[ORM\ManyToOne(targetEntity: \KejawenLab\ApiSkeleton\Entity\User::class)]
+    #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true)]
-    private ?\KejawenLab\ApiSkeleton\Entity\User $postedBy = null;
+    private ?User $postedBy = null;
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $postedAt = null;
+    private ?DateTimeImmutable $postedAt = null;
 
-    #[ORM\ManyToOne(targetEntity: \KejawenLab\ApiSkeleton\Entity\User::class)]
+    #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true)]
-    private ?\KejawenLab\ApiSkeleton\Entity\User $receivedBy = null;
+    private ?User $receivedBy = null;
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $receivedAt = null;
+    private ?DateTimeImmutable $receivedAt = null;
 
-    #[ORM\ManyToOne(targetEntity: \KejawenLab\ApiSkeleton\Entity\User::class)]
+    #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true)]
-    private ?\KejawenLab\ApiSkeleton\Entity\User $cancelledBy = null;
+    private ?User $cancelledBy = null;
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $cancelledAt = null;
+    private ?DateTimeImmutable $cancelledAt = null;
 
     public function getCode(): string
     {
@@ -117,12 +121,12 @@ class Transaction
         $this->status = $status;
     }
 
-    public function getDate(): \DateTimeImmutable
+    public function getDate(): DateTimeImmutable
     {
         return $this->date;
     }
 
-    public function setDate(\DateTimeImmutable $date): void
+    public function setDate(DateTimeImmutable $date): void
     {
         $this->date = $date;
     }
@@ -187,82 +191,82 @@ class Transaction
         $this->notes = $notes;
     }
 
-    public function getCreatedBy(): \KejawenLab\ApiSkeleton\Entity\User
+    public function getCreatedBy(): User
     {
         return $this->createdBy;
     }
 
-    public function setCreatedBy(\KejawenLab\ApiSkeleton\Entity\User $createdBy): void
+    public function setCreatedBy(User $createdBy): void
     {
         $this->createdBy = $createdBy;
     }
 
-    public function getCreatedAt(): \DateTimeImmutable
+    public function getCreatedAt(): DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $createdAt): void
+    public function setCreatedAt(DateTimeImmutable $createdAt): void
     {
         $this->createdAt = $createdAt;
     }
 
-    public function getPostedBy(): ?\KejawenLab\ApiSkeleton\Entity\User
+    public function getPostedBy(): ?User
     {
         return $this->postedBy;
     }
 
-    public function setPostedBy(?\KejawenLab\ApiSkeleton\Entity\User $postedBy): void
+    public function setPostedBy(?User $postedBy): void
     {
         $this->postedBy = $postedBy;
     }
 
-    public function getPostedAt(): ?\DateTimeImmutable
+    public function getPostedAt(): ?DateTimeImmutable
     {
         return $this->postedAt;
     }
 
-    public function setPostedAt(?\DateTimeImmutable $postedAt): void
+    public function setPostedAt(?DateTimeImmutable $postedAt): void
     {
         $this->postedAt = $postedAt;
     }
 
-    public function getReceivedBy(): ?\KejawenLab\ApiSkeleton\Entity\User
+    public function getReceivedBy(): ?User
     {
         return $this->receivedBy;
     }
 
-    public function setReceivedBy(?\KejawenLab\ApiSkeleton\Entity\User $receivedBy): void
+    public function setReceivedBy(?User $receivedBy): void
     {
         $this->receivedBy = $receivedBy;
     }
 
-    public function getReceivedAt(): ?\DateTimeImmutable
+    public function getReceivedAt(): ?DateTimeImmutable
     {
         return $this->receivedAt;
     }
 
-    public function setReceivedAt(?\DateTimeImmutable $receivedAt): void
+    public function setReceivedAt(?DateTimeImmutable $receivedAt): void
     {
         $this->receivedAt = $receivedAt;
     }
 
-    public function getCancelledBy(): ?\KejawenLab\ApiSkeleton\Entity\User
+    public function getCancelledBy(): ?User
     {
         return $this->cancelledBy;
     }
 
-    public function setCancelledBy(?\KejawenLab\ApiSkeleton\Entity\User $cancelledBy): void
+    public function setCancelledBy(?User $cancelledBy): void
     {
         $this->cancelledBy = $cancelledBy;
     }
 
-    public function getCancelledAt(): ?\DateTimeImmutable
+    public function getCancelledAt(): ?DateTimeImmutable
     {
         return $this->cancelledAt;
     }
 
-    public function setCancelledAt(?\DateTimeImmutable $cancelledAt): void
+    public function setCancelledAt(?DateTimeImmutable $cancelledAt): void
     {
         $this->cancelledAt = $cancelledAt;
     }

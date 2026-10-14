@@ -58,7 +58,6 @@ class PermissionSubscriberTest extends TestCase
     {
         $permission = new Permission('TEST', [Permission::VIEW], true);
 
-
         $authorization = $this->createMock(Authorization::class);
         $authorization->expects($this->once())->method('authorize')->willReturn(true);
 

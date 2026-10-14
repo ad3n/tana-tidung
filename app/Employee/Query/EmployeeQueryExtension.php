@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Employee\Query;
 
 use Doctrine\ORM\QueryBuilder;
-use KejawenLab\Application\Employee\Model\EmployeeInterface;
 use KejawenLab\ApiSkeleton\Pagination\Query\AbstractQueryExtension;
 use KejawenLab\ApiSkeleton\Util\StringUtil;
+use KejawenLab\Application\Employee\Model\EmployeeInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -24,7 +24,7 @@ final class EmployeeQueryExtension extends AbstractQueryExtension
 
         $alias = $this->aliasHelper->findAlias('root');
         $queryBuilder->andWhere(sprintf('(UPPER(%s.code) LIKE :employeeSearch OR UPPER(%s.name) LIKE :employeeSearch)', $alias, $alias))
-            ->setParameter('employeeSearch', '%' . StringUtil::uppercase($query) . '%');
+            ->setParameter('employeeSearch', '%'.StringUtil::uppercase($query).'%');
     }
 
     public function support(string $class, Request $request): bool

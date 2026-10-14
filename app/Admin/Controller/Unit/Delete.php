@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Admin\Controller\Unit;
 
+use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
 use KejawenLab\Application\Unit\Model\UnitInterface;
 use KejawenLab\Application\Unit\UnitService;
-use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -34,7 +35,7 @@ final class Delete extends AbstractController
 
         try {
             $this->service->remove($unit);
-        } catch (\Symfony\Component\HttpKernel\Exception\ConflictHttpException $error) {
+        } catch (ConflictHttpException $error) {
             $this->addFlash('error', $error->getMessage());
 
             return new RedirectResponse($this->generateUrl(Main::class));

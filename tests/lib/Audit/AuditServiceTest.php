@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace KejawenLab\ApiSkeleton\Tests\Audit;
 
+use DateTimeImmutable;
 use DH\Auditor\Model\Entry;
 use DH\Auditor\Provider\Doctrine\Persistence\Reader\Reader;
 use KejawenLab\ApiSkeleton\Audit\Audit;
@@ -32,7 +33,7 @@ class AuditServiceTest extends TestCase
         $entry = Entry::fromArray([
             'type' => 'INSERT',
             'diffs' => '{}',
-            'created_at' => new \DateTimeImmutable('2021-04-03'),
+            'created_at' => new DateTimeImmutable('2021-04-03'),
         ]);
 
         $item = $this->createMock(CacheItemInterface::class);

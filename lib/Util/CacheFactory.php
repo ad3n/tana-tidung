@@ -16,11 +16,10 @@ use Symfony\Component\HttpFoundation\RequestStack;
 final class CacheFactory
 {
     public function __construct(
-        private readonly RequestStack           $requestStack,
+        private readonly RequestStack $requestStack,
         private readonly CacheItemPoolInterface $cache,
         private readonly EntityManagerInterface $entityManager,
-    )
-    {
+    ) {
     }
 
     public function invalidQueryCache(): void
@@ -38,7 +37,7 @@ final class CacheFactory
             return true;
         }
 
-        return (bool)$request->attributes->get(SemartApiSkeleton::DISABLE_QUERY_CACHE_QUERY_STRING);
+        return (bool) $request->attributes->get(SemartApiSkeleton::DISABLE_QUERY_CACHE_QUERY_STRING);
     }
 
     /**

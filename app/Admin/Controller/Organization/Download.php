@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Admin\Controller\Organization;
 
-use KejawenLab\Application\Organization\OrganizationService;
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
+use KejawenLab\Application\Organization\OrganizationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;

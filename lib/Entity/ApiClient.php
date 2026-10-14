@@ -109,7 +109,7 @@ class ApiClient implements ApiClientInterface
 
     public function getId(): ?string
     {
-        return (string)$this->id;
+        return (string) $this->id;
     }
 
     public function getCredential(): ?string

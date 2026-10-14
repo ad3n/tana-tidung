@@ -5,5 +5,5 @@
         <table class="table"><thead><tr>{% for label in ['organization', 'item', 'batch', 'expiry', 'location', 'qty'] %}<th>{{ ('transaction.' ~ label)|trans }}</th>{% endfor %}</tr></thead><tbody>
         {% for stock in stocks %}<tr><td>{{ stock.organization }}</td><td>{{ stock.item }}</td><td>{{ stock.batch_number }}</td><td>{{ stock.expiry_date|default('-') }}</td><td><span class="badge badge-{{ {AVAILABLE: 'success', IN_TRANSIT: 'warning'}[stock.location]|default('secondary') }}">{{ ('transaction.location.' ~ stock.location)|trans }}</span></td><td>{{ stock.qty|number_format(2, ',', '.') }} {{ stock.unit }}</td></tr>{% else %}<tr><td colspan="6">{{ 'transaction.empty_stock'|trans }}</td></tr>{% endfor %}
         </tbody></table>
-    </div><div class="card-footer"><a class="btn btn-outline-secondary" href="{{ path('KejawenLab\\Application\\Admin\\Controller\\Transaction\\Main') }}">{{ 'transaction.back'|trans }}</a></div></div>
+    </div></div>
 {% endblock %}

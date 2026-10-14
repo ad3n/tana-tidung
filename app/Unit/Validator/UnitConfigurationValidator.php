@@ -2,11 +2,15 @@
 
 declare(strict_types=1);
 
-namespace KejawenLab\Application\Validation;
+namespace KejawenLab\Application\Unit\Validator;
 
 use Doctrine\ORM\EntityManagerInterface;
-use KejawenLab\Application\Entity\{Item, Unit, ItemUnitConversion};
-use Symfony\Component\Validator\{Constraint, ConstraintValidator};
+use KejawenLab\Application\Entity\Item;
+use KejawenLab\Application\Entity\ItemUnitConversion;
+use KejawenLab\Application\Entity\TransactionItem;
+use KejawenLab\Application\Entity\Unit;
+use Symfony\Component\Validator\Constraint;
+use Symfony\Component\Validator\ConstraintValidator;
 
 class UnitConfigurationValidator extends ConstraintValidator
 {
@@ -21,30 +25,37 @@ class UnitConfigurationValidator extends ConstraintValidator
             $unit = $value->getUnit();
             if (!$base || !$unit) {
                 $this->context->buildViolation('Pilih satuan dasar barang dan satuan konversi terlebih dahulu.')->atPath('unit')->addViolation();
+
                 return;
             }
+
             if ($base->getId() === $unit->getId()) {
                 $this->context->buildViolation('Satuan dasar otomatis memiliki faktor 1; pilih satuan lain.')->atPath('unit')->addViolation();
             }
-            if (!in_array($base->getType(), Unit::TYPES, true) || !in_array($unit->getType(), Unit::TYPES, true) || ($unit->getType() !== 'package' && $unit->getType() !== $base->getType())) {
+
+            if (!in_array($base->getType(), Unit::TYPES, true) || !in_array($unit->getType(), Unit::TYPES, true) || ('package' !== $unit->getType() && $unit->getType() !== $base->getType())) {
                 $this->context->buildViolation('Jenis satuan tidak sesuai. Konversi hanya boleh dalam jenis yang sama atau dari Kemasan ke satuan dasar.')->atPath('unit')->addViolation();
             }
         }
+
         if ($value instanceof Item) {
             if ($value->getUnit() && !in_array($value->getUnit()->getType(), Unit::TYPES, true)) {
                 $this->context->buildViolation('Tentukan jenis satuan pada master Satuan terlebih dahulu.')->atPath('unit')->addViolation();
             }
+
             $original = $this->em->getUnitOfWork()->getOriginalEntityData($value);
-            if (isset($original['unit']) && $original['unit'] !== $value->getUnit() && $this->em->getRepository(\KejawenLab\Application\Entity\TransactionItem::class)->count(['item' => $value]) > 0) {
+            if (isset($original['unit']) && $original['unit'] !== $value->getUnit() && $this->em->getRepository(TransactionItem::class)->count(['item' => $value]) > 0) {
                 $this->context->buildViolation('Satuan dasar tidak dapat diubah setelah barang memiliki transaksi.')->atPath('unit')->addViolation();
             }
+
             if (isset($original['unit']) && $original['unit'] !== $value->getUnit() && $this->em->getRepository(ItemUnitConversion::class)->count(['item' => $value]) > 0) {
                 $this->context->buildViolation('Hapus konversi barang terlebih dahulu sebelum mengganti satuan dasar.')->atPath('unit')->addViolation();
             }
         }
+
         if ($value instanceof Unit) {
             $original = $this->em->getUnitOfWork()->getOriginalEntityData($value);
-            if (isset($original['type']) && $original['type'] !== $value->getType() && $original['type'] !== 'unclassified') {
+            if (isset($original['type']) && $original['type'] !== $value->getType() && 'unclassified' !== $original['type']) {
                 if ($this->em->getRepository(Item::class)->count(['unit' => $value]) > 0 || $this->em->getRepository(ItemUnitConversion::class)->count(['unit' => $value]) > 0) {
                     $this->context->buildViolation('Jenis satuan tidak dapat diubah karena sudah digunakan pada barang atau konversi.')->atPath('type')->addViolation();
                 }

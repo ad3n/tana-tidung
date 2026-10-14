@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Admin\Controller\Item;
 
-use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
-use KejawenLab\Application\Entity\{Item, ItemUnitConversion};
-use KejawenLab\Application\Form\ItemUnitConversionType;
+use Doctrine\ORM\EntityManagerInterface;
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
 use KejawenLab\ApiSkeleton\Security\Service\MenuService;
+use KejawenLab\Application\Entity\Item;
+use KejawenLab\Application\Entity\ItemUnitConversion;
+use KejawenLab\Application\Form\ItemUnitConversionType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormError;
-use Symfony\Component\HttpFoundation\{Request, Response};
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Permission(menu: 'ITEM', actions: [Permission::VIEW])]
@@ -25,6 +27,7 @@ final class Conversions extends AbstractController
         if (!$item) {
             throw $this->createNotFoundException();
         }
+
         $conversions = $em->getRepository(ItemUnitConversion::class)->findBy(['item' => $item]);
         $conversion = new ItemUnitConversion();
         $conversion->setItem($item);
@@ -36,12 +39,14 @@ final class Conversions extends AbstractController
                 try {
                     $em->persist($conversion);
                     $em->flush();
+
                     return $this->redirectToRoute(self::class, ['id' => $id], Response::HTTP_SEE_OTHER);
                 } catch (UniqueConstraintViolationException) {
                     $form->addError(new FormError('Konversi satuan ini sudah terdaftar.'));
                 }
             }
         }
+
         return $this->render('item/conversions.html.twig', [
             'page_title' => 'sas.page.item_conversion.title',
             'data' => $item,

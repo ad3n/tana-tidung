@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace KejawenLab\ApiSkeleton\Media;
 
+use Exception;
+use Override;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Vich\UploaderBundle\Mapping\PropertyMappingInterface;
 use Vich\UploaderBundle\Storage\AbstractStorage as Base;
+use Vich\UploaderBundle\Storage\FileSystemStorage;
 
 /**
  * @author Muhamad Surya Iksanudin<surya.iksanudin@gmail.com>
  */
 abstract class AbstractStorage extends Base
 {
-    #[\Override]
+    #[Override]
     public function resolveUri(object|array $obj, ?string $fieldName = null, ?string $className = null): ?string
     {
         [$mapping, $name] = $this->getFilename($obj, $fieldName, $className);
@@ -24,14 +28,14 @@ abstract class AbstractStorage extends Base
         }
 
         $uploadDir = $this->convertWindowsDirectorySeparator($mapping->getUploadDir($obj));
-        $uploadDir = $uploadDir === '' ? '' : $uploadDir . '/';
+        $uploadDir = '' === $uploadDir ? '' : $uploadDir.'/';
 
-        return \sprintf('%s/%s', $mapping->getUriPrefix(), $uploadDir . $name);
+        return \sprintf('%s/%s', $mapping->getUriPrefix(), $uploadDir.$name);
     }
 
     public function listFiles(PropertyMappingInterface $mapping): iterable
     {
-        $storage = new \Vich\UploaderBundle\Storage\FileSystemStorage($this->factory);
+        $storage = new FileSystemStorage($this->factory);
 
         yield from $storage->listFiles($mapping);
     }
@@ -43,23 +47,23 @@ abstract class AbstractStorage extends Base
 
     protected function doUpload(PropertyMappingInterface $mapping, File $file, ?string $dir, string $name): ?File
     {
-        $uploadDir = $mapping->getUploadDestination() . \DIRECTORY_SEPARATOR . $dir;
+        $uploadDir = $mapping->getUploadDestination().\DIRECTORY_SEPARATOR.$dir;
 
         if (!\file_exists($uploadDir)) {
             if (!\mkdir($uploadDir, recursive: true)) {
-                throw new \Exception('Could not create directory "' . $uploadDir . '"');
+                throw new Exception('Could not create directory "'.$uploadDir.'"');
             }
         }
         if (!\is_dir($uploadDir)) {
-            throw new \Exception('Tried to move file to directory "' . $uploadDir . '" but it is a file');
+            throw new Exception('Tried to move file to directory "'.$uploadDir.'" but it is a file');
         }
 
         if ($file instanceof UploadedFile) {
             return $file->move($uploadDir, $name);
         }
-        $targetPathname = $uploadDir . \DIRECTORY_SEPARATOR . $name;
+        $targetPathname = $uploadDir.\DIRECTORY_SEPARATOR.$name;
         if (!\copy($file->getPathname(), $targetPathname)) {
-            throw new \RuntimeException('Could not copy file');
+            throw new RuntimeException('Could not copy file');
         }
 
         return new File($targetPathname);
@@ -70,7 +74,7 @@ abstract class AbstractStorage extends Base
         $file = $this->doResolvePath($mapping, $dir, $name);
 
         if (!\file_exists($file) || !\unlink($file)) {
-            throw new \Exception('Cannot remove file ' . $file);
+            throw new Exception('Cannot remove file '.$file);
         }
 
         return true;
@@ -78,17 +82,16 @@ abstract class AbstractStorage extends Base
 
     protected function doResolvePath(
         PropertyMappingInterface $mapping,
-        ?string         $dir,
-        string          $name,
-        ?bool           $relative = false
-    ): string
-    {
-        $path = $dir !== null && $dir !== '' && $dir !== '0' ? $dir . \DIRECTORY_SEPARATOR . $name : $name;
+        ?string $dir,
+        string $name,
+        ?bool $relative = false,
+    ): string {
+        $path = null !== $dir && '' !== $dir && '0' !== $dir ? $dir.\DIRECTORY_SEPARATOR.$name : $name;
 
-        if ($relative === true) {
+        if (true === $relative) {
             return $path;
         }
 
-        return $mapping->getUploadDestination() . \DIRECTORY_SEPARATOR . $path;
+        return $mapping->getUploadDestination().\DIRECTORY_SEPARATOR.$path;
     }
 }

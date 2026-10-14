@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Admin\Controller\Category;
 
-use KejawenLab\Application\Category\Model\CategoryInterface;
-use KejawenLab\Application\Category\CategoryService;
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
+use KejawenLab\Application\Category\CategoryService;
+use KejawenLab\Application\Category\Model\CategoryInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;

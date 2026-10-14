@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Unit\Query;
 
 use Doctrine\ORM\QueryBuilder;
-use KejawenLab\Application\Unit\Model\UnitInterface;
 use KejawenLab\ApiSkeleton\Pagination\Query\AbstractQueryExtension;
 use KejawenLab\ApiSkeleton\Util\StringUtil;
+use KejawenLab\Application\Unit\Model\UnitInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -24,7 +24,7 @@ final class UnitQueryExtension extends AbstractQueryExtension
 
         $alias = $this->aliasHelper->findAlias('root');
         $queryBuilder->andWhere(sprintf('(UPPER(%s.code) LIKE :unitSearch OR UPPER(%s.name) LIKE :unitSearch)', $alias, $alias))
-            ->setParameter('unitSearch', '%' . StringUtil::uppercase($query) . '%');
+            ->setParameter('unitSearch', '%'.StringUtil::uppercase($query).'%');
     }
 
     public function support(string $class, Request $request): bool

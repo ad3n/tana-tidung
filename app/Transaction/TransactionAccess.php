@@ -6,14 +6,16 @@ namespace KejawenLab\Application\Transaction;
 
 use Doctrine\ORM\EntityManagerInterface;
 use KejawenLab\ApiSkeleton\Entity\User as Account;
-use KejawenLab\ApiSkeleton\Security\User;
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
 use KejawenLab\ApiSkeleton\Security\Service\Authorization;
-use KejawenLab\Application\Entity\{Employee, Organization, Transaction};
+use KejawenLab\ApiSkeleton\Security\User;
+use KejawenLab\Application\Entity\Employee;
+use KejawenLab\Application\Entity\Organization;
+use KejawenLab\Application\Entity\Transaction;
 use KejawenLab\Application\Transaction\Enum\TransactionType;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
 final class TransactionAccess
 {
@@ -28,13 +30,15 @@ final class TransactionAccess
     public function account(): Account
     {
         $user = $this->tokens->getToken()?->getUser();
-        if (!$user instanceof User || $user->getClass() !== Account::class) {
+        if (!$user instanceof User || Account::class !== $user->getClass()) {
             throw new AccessDeniedHttpException('Transaksi hanya dapat diakses oleh pengguna aplikasi.');
         }
+
         $account = $this->em->find(Account::class, $user->getId());
         if (!$account) {
             throw new AccessDeniedHttpException();
         }
+
         return $account;
     }
 
@@ -48,10 +52,12 @@ final class TransactionAccess
         if ($this->isAdmin()) {
             return null;
         }
+
         $employees = $this->em->getRepository(Employee::class)->findBy(['user' => $this->account()]);
-        if (count($employees) !== 1 || !$employees[0]->getOrganization() || $employees[0]->getOrganization()->getDeletedAt() !== null) {
+        if (1 !== count($employees) || !$employees[0]->getOrganization() || null !== $employees[0]->getOrganization()->getDeletedAt()) {
             throw new AccessDeniedHttpException('Pengguna harus terhubung ke tepat satu Pegawai dengan SKPD/OPD aktif.');
         }
+
         return $employees[0]->getOrganization();
     }
 
@@ -61,19 +67,22 @@ final class TransactionAccess
         if (!$this->authorization->authorize(new Permission('TRANSACTION', [$action]))) {
             throw new AccessDeniedHttpException('Hak akses transaksi tidak mencukupi.');
         }
+
         $this->organization();
     }
 
     public function canView(Transaction $transaction): bool
     {
         $organization = $this->organization();
+
         return !$organization || in_array($organization->getId(), [$transaction->getFromOrganization()?->getId(), $transaction->getToOrganization()?->getId()], true);
     }
 
     public function canOperate(Transaction $transaction, bool $receive = false): bool
     {
         $organization = $this->organization();
-        $owner = $receive || $transaction->getType() === TransactionType::RECEIPT ? $transaction->getToOrganization() : $transaction->getFromOrganization();
+        $owner = $receive || TransactionType::RECEIPT === $transaction->getType() ? $transaction->getToOrganization() : $transaction->getFromOrganization();
+
         return !$organization || $organization->getId() === $owner?->getId();
     }
 }

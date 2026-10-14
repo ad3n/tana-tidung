@@ -73,7 +73,7 @@ class Permission implements PermissionInterface
 
     public function getId(): ?string
     {
-        return (string)$this->id;
+        return (string) $this->id;
     }
 
     public function getGroup(): ?GroupInterface

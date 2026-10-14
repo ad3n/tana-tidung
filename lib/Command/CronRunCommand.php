@@ -28,13 +28,12 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class CronRunCommand extends Command
 {
     public function __construct(
-        private readonly CronService       $cronService,
+        private readonly CronService $cronService,
         private readonly CronReportService $reportService,
-        private readonly CronBuilder       $builder,
-        private readonly Executor          $executor,
-        private readonly string            $reportClass,
-    )
-    {
+        private readonly CronBuilder $builder,
+        private readonly Executor $executor,
+        private readonly string $reportClass,
+    ) {
         parent::__construct();
     }
 
@@ -77,8 +76,8 @@ final class CronRunCommand extends Command
             /** @var CronReportInterface $report */
             $report = new $this->reportClass();
             $report->setCron($cron);
-            $report->setOutput(implode("\n", (array)$value->getOutput()));
-            $report->setExitCode((int)$value->getJob()->getProcess()->getExitCode());
+            $report->setOutput(implode("\n", (array) $value->getOutput()));
+            $report->setExitCode((int) $value->getJob()->getProcess()->getExitCode());
             $report->setRunAt(
                 DateTime::createFromFormat(
                     'U.u',

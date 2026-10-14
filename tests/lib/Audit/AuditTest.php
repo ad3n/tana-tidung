@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace KejawenLab\ApiSkeleton\Tests\Audit;
 
+use DateTimeImmutable;
 use KejawenLab\ApiSkeleton\Audit\Audit;
 use KejawenLab\ApiSkeleton\Audit\AuditItem;
 use KejawenLab\ApiSkeleton\Entity\EntityInterface;
@@ -17,7 +18,7 @@ class AuditTest extends TestCase
     public function testAddItem(): void
     {
         $audit = new Audit($this->createStub(EntityInterface::class));
-        $audit->addItem(new AuditItem('test', ['data' => 'test data'], new \DateTimeImmutable('2021-04-03'), 'user-id', 'user-name', '127.0.0.1'));
+        $audit->addItem(new AuditItem('test', ['data' => 'test data'], new DateTimeImmutable('2021-04-03'), 'user-id', 'user-name', '127.0.0.1'));
 
         $this->assertSame(Audit::class, $audit::class);
     }
@@ -27,7 +28,7 @@ class AuditTest extends TestCase
         $entity = $this->createStub(EntityInterface::class);
 
         $audit = new Audit($entity);
-        $audit->addItem(new AuditItem('test', ['data' => 'test data'], new \DateTimeImmutable('2021-04-03'), 'user-id', 'user-name', '127.0.0.1'));
+        $audit->addItem(new AuditItem('test', ['data' => 'test data'], new DateTimeImmutable('2021-04-03'), 'user-id', 'user-name', '127.0.0.1'));
 
         $return = $audit->toArray();
 

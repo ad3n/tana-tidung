@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace KejawenLab\ApiSkeleton\Cron\Validator;
 
 use Attribute;
+use Override;
 use Symfony\Component\Validator\Constraint;
 
 /**
@@ -20,7 +21,7 @@ final class CronScheduleFormat extends Constraint
         return 'sas.validator.cron.format_not_valid';
     }
 
-    #[\Override]
+    #[Override]
     public function getTargets(): string
     {
         return self::PROPERTY_CONSTRAINT;

@@ -14,9 +14,9 @@ use KejawenLab\Application\Repository\FiscalYearRepository;
 use OpenApi\Attributes as OA;
 use Ramsey\Uuid\Doctrine\UuidGenerator;
 use Ramsey\Uuid\UuidInterface;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
-use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 #[Gedmo\SoftDeleteable(fieldName: 'deletedAt')]
 #[ORM\Entity(repositoryClass: FiscalYearRepository::class)]
@@ -73,6 +73,6 @@ class FiscalYear implements FiscalYearInterface
 
     public function getNullOrString(): ?string
     {
-        return $this->year === null ? null : (string) $this->year;
+        return null === $this->year ? null : (string) $this->year;
     }
 }

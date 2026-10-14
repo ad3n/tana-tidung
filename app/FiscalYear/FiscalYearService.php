@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace KejawenLab\Application\FiscalYear;
 
 use Doctrine\ORM\EntityManagerInterface;
-use KejawenLab\Application\Entity\FiscalYear;
 use KejawenLab\ApiSkeleton\Entity\EntityInterface;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
-use Throwable;
-use KejawenLab\Application\FiscalYear\Model\FiscalYearRepositoryInterface;
 use KejawenLab\ApiSkeleton\Pagination\AliasHelper;
 use KejawenLab\ApiSkeleton\Service\AbstractService;
 use KejawenLab\ApiSkeleton\Service\Model\ServiceInterface;
+use KejawenLab\Application\Entity\FiscalYear;
+use KejawenLab\Application\FiscalYear\Model\FiscalYearRepositoryInterface;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Throwable;
 
 /**
  * @author Muhamad Surya Iksanudin<surya.iksanudin@gmail.com>
@@ -28,23 +28,27 @@ final class FiscalYearService extends AbstractService implements ServiceInterfac
     public function save(EntityInterface $object): void
     {
         $this->withActiveYearLock(function () use ($object): void {
-            if ($object->getId() !== null) {
+            if (null !== $object->getId()) {
                 $year = $object->getYear();
                 $status = $object->getStatus();
                 $this->em->refresh($object);
-                if ($object->getDeletedAt() !== null) {
+                if (null !== $object->getDeletedAt()) {
                     throw new ConflictHttpException('Tahun anggaran sudah dihapus.');
                 }
+
                 $object->setYear($year);
                 $object->setStatus($status);
             }
+
             $active = $this->em->getConnection()->fetchFirstColumn('SELECT id FROM fiscal_years WHERE status = true AND deleted_at IS NULL');
             if (!$object->getStatus() && in_array($object->getId(), $active, true)) {
                 throw new ConflictHttpException('Tahun anggaran aktif tidak dapat dinonaktifkan. Aktifkan tahun anggaran lain terlebih dahulu.');
             }
+
             if (!$active) {
                 $object->setStatus(true);
             }
+
             if ($object->getStatus()) {
                 foreach ($active as $id) {
                     if ($id !== $object->getId()) {
@@ -54,6 +58,7 @@ final class FiscalYearService extends AbstractService implements ServiceInterfac
                     }
                 }
             }
+
             parent::save($object);
         });
     }
@@ -64,10 +69,12 @@ final class FiscalYearService extends AbstractService implements ServiceInterfac
             if ($this->em->getConnection()->fetchOne('SELECT 1 FROM transactions WHERE fiscal_year_id = ? LIMIT 1', [$object->getId()])) {
                 throw new ConflictHttpException('Tahun anggaran sudah digunakan dalam transaksi.');
             }
+
             $active = $this->em->getConnection()->fetchOne('SELECT status FROM fiscal_years WHERE id = ? AND deleted_at IS NULL', [$object->getId()]);
             if ($active) {
                 throw new ConflictHttpException('Tahun anggaran aktif tidak dapat dihapus. Aktifkan tahun anggaran lain terlebih dahulu.');
             }
+
             parent::remove($object);
         });
     }
@@ -77,7 +84,6 @@ final class FiscalYearService extends AbstractService implements ServiceInterfac
         $connection = $this->em->getConnection();
         $connection->beginTransaction();
         try {
-            // Serialize activation/deletion, including when no fiscal year exists yet.
             $connection->executeQuery('SELECT pg_advisory_xact_lock(74261014)');
             $operation();
             $connection->commit();

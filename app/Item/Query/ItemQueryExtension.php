@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Item\Query;
 
 use Doctrine\ORM\QueryBuilder;
-use KejawenLab\Application\Item\Model\ItemInterface;
 use KejawenLab\ApiSkeleton\Pagination\Query\AbstractQueryExtension;
 use KejawenLab\ApiSkeleton\Util\StringUtil;
+use KejawenLab\Application\Item\Model\ItemInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -24,7 +24,7 @@ final class ItemQueryExtension extends AbstractQueryExtension
 
         $alias = $this->aliasHelper->findAlias('root');
         $queryBuilder->andWhere(sprintf('(UPPER(%s.code) LIKE :itemSearch OR UPPER(%s.name) LIKE :itemSearch)', $alias, $alias))
-            ->setParameter('itemSearch', '%' . StringUtil::uppercase($query) . '%');
+            ->setParameter('itemSearch', '%'.StringUtil::uppercase($query).'%');
     }
 
     public function support(string $class, Request $request): bool

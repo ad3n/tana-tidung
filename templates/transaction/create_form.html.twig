@@ -1,0 +1,20 @@
+{% trans_default_domain 'pages' %}
+<div id="transaction-stock-error" class="alert alert-danger" role="alert" hidden></div>
+<form method="post" id="transaction-create-form" class="mb-4">
+    <div class="card">
+        <div class="card-header"><h4>{{ 'transaction.title_with_year'|trans({'%title%': page_title|trans, '%year%': active_year ? active_year.year : '-'}) }}</h4><small>{{ 'transaction.entry_help'|trans }}</small></div>
+        {% include 'transaction/header_fields.html.twig' %}
+    </div>
+    <div class="card"><div class="card-header"><h4>{{ 'transaction.items'|trans }}</h4></div>
+        <div class="card-body table-responsive"><table class="table table-bordered table-hover">
+            <thead><tr>{% for label in ['item_code', 'item', 'qty', 'unit', 'batch', 'expiry'] %}<th>{{ ('transaction.' ~ label)|trans }}</th>{% endfor %}{% if values.type != 1 %}<th>{{ 'transaction.available_stock'|trans }}</th>{% endif %}<th>{{ 'transaction.actions'|trans }}</th></tr></thead>
+            <tbody id="transaction-pending-items"></tbody>
+        </table><p id="transaction-empty-items" class="text-muted">{{ 'transaction.empty_items'|trans }}</p></div>
+    </div>
+    <div class="d-flex justify-content-between flex-wrap">
+        <button type="button" class="btn btn-primary mb-2" data-toggle="modal" data-target="#transaction-item-modal">{{ 'transaction.add_item'|trans }}</button>
+        <div><button type="submit" class="btn btn-success mb-2">{{ 'transaction.save_draft'|trans }}</button></div>
+    </div>
+</form>
+{% include 'transaction/item_modal.html.twig' %}
+<script id="transaction-pending-data" type="application/json">{{ values.items|default([])|json_encode(15)|raw }}</script>

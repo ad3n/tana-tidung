@@ -1,11 +1,14 @@
 {% trans_default_domain 'pages' %}
+{% set notes_on_right = (transaction ? transaction.type.value : values.type) in [1, 2] %}
+{% set field_columns = notes_on_right ? 'col-md-6' : 'col-md-6 col-xl-4' %}
     <div class="card-body">
-        <p>{{ 'transaction.fiscal_year'|trans }}: <strong>{{ transaction ? transaction.fiscalYear.year : (active_year ? active_year.year : '-') }}</strong></p>
+        {% if transaction %}<p>{{ 'transaction.fiscal_year'|trans }}: <strong>{{ transaction.fiscalYear.year }}</strong></p>{% endif %}
         <div class="row">
+        {% if notes_on_right %}<div class="col-lg-8"><div class="row">{% endif %}
         <input type="hidden" id="transaction-type" name="type" value="{{ transaction ? transaction.type.value : values.type }}">
-        <div class="form-group col-md-6 col-xl-4"><label for="transaction-date">{{ 'transaction.date'|trans }}</label><input class="form-control" id="transaction-date" type="date" name="date" value="{{ values.date|default(active_year and active_year.year != ('now'|date('Y')) ? active_year.year ~ '-01-01' : 'now'|date('Y-m-d')) }}" required></div>
+        <div class="form-group {{ field_columns }}"><label for="transaction-date">{{ 'transaction.date'|trans }}</label><input class="form-control" id="transaction-date" type="date" name="date" value="{{ values.date|default(active_year and active_year.year != ('now'|date('Y')) ? active_year.year ~ '-01-01' : 'now'|date('Y-m-d')) }}" required></div>
         {% for side, types in {from: '2,3', to: '1,2'} %}
-            <div class="form-group col-md-6 col-xl-4" data-transaction-types="{{ types }}" data-locked="{{ own_organization and (side == 'from' or (values.type|default(1)) == 1) ? 1 : 0 }}" id="organization-{{ side }}">
+            <div class="form-group {{ field_columns }}" data-transaction-types="{{ types }}" data-locked="{{ own_organization and (side == 'from' or (values.type|default(1)) == 1) ? 1 : 0 }}" id="organization-{{ side }}">
                 <label for="transaction-{{ side }}">{{ ('transaction.' ~ side)|trans }}</label>
                 <select class="form-control select2" id="transaction-{{ side }}" name="{{ side }}_organization_id">
                     <option value="">{{ 'transaction.choose'|trans }}</option>
@@ -13,8 +16,13 @@
                 </select>
             </div>
         {% endfor %}
-        <div class="form-group col-md-6 col-xl-4" data-transaction-types="1"><label for="transaction-source">{{ 'transaction.source'|trans }}</label><select class="form-control select2" name="source_id" id="transaction-source"><option value="">{{ 'transaction.choose'|trans }}</option>{% for source in sources %}<option value="{{ source.id }}" {% if values.source_id|default('') == source.id %}selected{% endif %}>{{ source.name }}</option>{% endfor %}</select></div>
-        <div class="form-group col-md-6 col-xl-4"><label class="required" for="transaction-reference">{{ 'transaction.reference'|trans }}</label><input class="form-control" id="transaction-reference" name="reference_number" required maxlength="255" value="{{ values.reference_number|default('') }}"></div>
-        <div class="form-group col-md-6 col-xl-4"><label for="transaction-notes">{{ 'transaction.notes'|trans }}</label><textarea class="form-control" id="transaction-notes" name="notes" maxlength="10000">{{ values.notes|default('') }}</textarea><small class="form-text text-muted">{{ 'transaction.notes_help'|trans }}</small></div>
+        <div class="form-group {{ field_columns }}" data-transaction-types="1"><label for="transaction-source">{{ 'transaction.source'|trans }}</label><select class="form-control select2" name="source_id" id="transaction-source"><option value="">{{ 'transaction.choose'|trans }}</option>{% for source in sources %}<option value="{{ source.id }}" {% if values.source_id|default('') == source.id %}selected{% endif %}>{{ source.name }}</option>{% endfor %}</select></div>
+        <div class="form-group {{ field_columns }}"><label class="required" for="transaction-reference">{{ ((transaction ? transaction.type.value : values.type) == 1 ? 'transaction.reference' : 'transaction.reference_sk')|trans }}</label><input class="form-control" id="transaction-reference" name="reference_number" required maxlength="255" value="{{ values.reference_number|default('') }}"></div>
+        {% if notes_on_right %}</div></div>{% endif %}
+        <div class="form-group {{ notes_on_right ? 'col-lg-4 d-flex flex-column transaction-notes-column' : 'col-12' }}">
+            <label for="transaction-notes">{{ 'transaction.notes'|trans }}</label>
+            <textarea class="form-control {{ notes_on_right ? 'flex-grow-1' : '' }}" id="transaction-notes" name="notes" rows="{{ notes_on_right ? 5 : 2 }}" maxlength="10000">{{ values.notes|default('') }}</textarea>
+            {% if not notes_on_right %}<small class="form-text text-muted">{{ 'transaction.notes_help'|trans }}</small>{% endif %}
+        </div>
         </div>
     </div>

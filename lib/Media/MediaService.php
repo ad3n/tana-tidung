@@ -9,6 +9,7 @@ use KejawenLab\ApiSkeleton\Media\Model\MediaRepositoryInterface;
 use KejawenLab\ApiSkeleton\Pagination\AliasHelper;
 use KejawenLab\ApiSkeleton\Service\AbstractService;
 use KejawenLab\ApiSkeleton\Service\Model\ServiceInterface;
+use Override;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Vich\UploaderBundle\Storage\StorageInterface;
 
@@ -19,15 +20,14 @@ final class MediaService extends AbstractService implements ServiceInterface
 {
     public function __construct(
         private readonly StorageInterface $storage,
-        MessageBusInterface               $messageBus,
-        MediaRepositoryInterface          $repository,
-        AliasHelper                       $aliasHelper,
-    )
-    {
+        MessageBusInterface $messageBus,
+        MediaRepositoryInterface $repository,
+        AliasHelper $aliasHelper,
+    ) {
         parent::__construct($messageBus, $repository, $aliasHelper);
     }
 
-    #[\Override]
+    #[Override]
     public function get(string $id): ?MediaInterface
     {
         /** @var MediaInterface|null $media */
@@ -41,7 +41,7 @@ final class MediaService extends AbstractService implements ServiceInterface
 
     public function getByFile(?string $fileName): ?MediaInterface
     {
-        if ($fileName === null || $fileName === '') {
+        if (null === $fileName || '' === $fileName) {
             return null;
         }
 
