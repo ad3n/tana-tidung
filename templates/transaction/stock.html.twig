@@ -5,13 +5,15 @@
         <div class="card-header">
             <h4>{{ 'transaction.stock'|trans }}</h4>
             <form method="get" class="row">
+                {% if show_organization_filter %}
                 <div class="col-md-5 mb-2 mb-md-0">
                     <select id="stock-organization" name="organization_id" class="form-control select2" aria-label="{{ 'transaction.organization'|trans }}" {% if own_organization %}disabled{% endif %}>
                         {% if not own_organization %}<option value="">{{ 'transaction.all_organizations'|trans }}</option>{% endif %}
                         {% for organization in organizations %}<option value="{{ organization.id }}" {% if selected_organization == organization.id %}selected{% endif %}>{{ organization.name }}</option>{% endfor %}
                     </select>
                 </div>
-                <div class="col-md-7">
+                {% endif %}
+                <div class="{{ show_organization_filter ? 'col-md-7' : 'col-12' }}">
                     <div class="input-group">
                         <input type="search" id="stock-search" name="q" class="form-control" value="{{ search }}" placeholder="{{ 'transaction.stock_search_placeholder'|trans }}" aria-label="{{ 'transaction.stock_search'|trans }}">
                         <div class="input-group-append">

@@ -205,6 +205,7 @@ transaction.from: SKPD/OPD Asal
 transaction.to: SKPD/OPD Tujuan
 transaction.organization: SKPD/OPD
 transaction.source: Sumber Barang
+transaction.list.source: Sumber
 transaction.reference: No Faktur
 transaction.notes: Catatan
 transaction.notes_help: Wajib diisi untuk pengeluaran akhir seperti rusak atau kedaluwarsa.

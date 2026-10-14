@@ -115,4 +115,9 @@ class Organization implements OrganizationInterface
     {
         return $this->getName();
     }
+
+    public function __toString(): string
+    {
+        return sprintf('%s - %s', $this->getCode(), $this->getName());
+    }
 }

@@ -23,6 +23,7 @@ final class Stock extends AbstractController
             'page_title' => 'transaction.stock', 'stocks' => $stocks,
             'search' => $search, 'organizations' => $service->stockOrganizations(),
             'own_organization' => $service->access->organization(),
+            'show_organization_filter' => $service->access->isAdmin(),
             'selected_organization' => $service->access->organization()?->getId() ?? $organizationId,
         ]);
     }

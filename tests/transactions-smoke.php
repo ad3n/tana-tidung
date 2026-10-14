@@ -449,6 +449,21 @@ try {
         checkModule(!str_contains($sectionHtml, '>Simpan Draft<') && str_contains($sectionHtml, '>Simpan</button>'), 'Save label not updated');
         [$listHtml] = request('/admin/transactions/'.$section.'/list', 200, headers: $auth);
         checkModule(str_contains($listHtml, 'id="transaction-list"') && !str_contains($listHtml, 'id="transaction-create-form"'), 'List page includes entry form');
+        checkModule(str_contains($listHtml, 'id="transaction-list-organization"'), 'Admin organization filter missing');
+        $target = match ($type) {
+            1 => $receipt,
+            2 => $transfer,
+            3 => $disposal,
+        };
+        $owners = match ($type) {
+            1 => ['A'],
+            2 => ['A', 'B'],
+            3 => ['B'],
+        };
+        foreach (['A', 'B', 'C'] as $orgKey) {
+            [$filteredHtml] = request('/admin/transactions/'.$section.'/list?'.http_build_query(['q' => $target['code'], 'organization_id' => $orgs[$orgKey]->getId()]), 200, headers: $auth);
+            checkModule(str_contains($filteredHtml, 'href="/admin/transactions/'.$target['id'].'"') === in_array($orgKey, $owners, true), 'Organization filter returned incorrect transactions');
+        }
         if (1 !== $type) {
             checkModule(!str_contains($listHtml, $receipt['code']), 'Receipt leaked into another transaction list');
         }
@@ -537,6 +552,28 @@ try {
     apiAs('A', $cancelPath.'/cancel', 403, 'POST', ['note' => 'No authority']);
     checkModule(4 === apiAs('apprA', $cancelPath.'/cancel', 200, 'POST', ['note' => 'Persetujuan dicabut'])['status'], 'Approver cannot cancel approved transfer');
     apiAs('A', $cancelPath.'/send', 409, 'POST');
+    [, $userHeaders] = request('/admin/', 302, 'POST', http_build_query(['_username' => $users['A']->getUsername(), '_password' => $password]), ['Content-Type: application/x-www-form-urlencoded']);
+    $userCookies = [];
+    foreach ($userHeaders as $header) {
+        if (preg_match('/^Set-Cookie:\s*([^;]+)/i', $header, $match)) {
+            $userCookies[] = $match[1];
+        }
+    }
+
+    $userAuth = ['Cookie: '.implode('; ', $userCookies)];
+    foreach (['receipts', 'transfers', 'disposals'] as $section) {
+        [$userList] = request('/admin/transactions/'.$section.'/list?organization_id='.$orgs['B']->getId(), 200, headers: $userAuth);
+        checkModule(!str_contains($userList, 'id="transaction-list-organization"'), 'Organization filter visible to non-admin');
+        if ('receipts' === $section) {
+            checkModule(str_contains($userList, 'href="/admin/transactions/'.$receipt['id'].'"'), 'Non-admin organization scope overridden by query parameter');
+        }
+        if ('disposals' === $section) {
+            checkModule(!str_contains($userList, 'href="/admin/transactions/'.$disposal['id'].'"'), 'Foreign organization transaction leaked to non-admin');
+        }
+    }
+
+    [$userStock] = request('/admin/transactions/stocks', 200, headers: $userAuth);
+    checkModule(!str_contains($userStock, 'id="stock-organization"'), 'Stock organization filter visible to non-admin');
     echo "Transaction stock, permissions, snapshots, lifecycle and admin checks passed.\n";
 } finally {
     // Delete only test-owned records; never load fixtures or clear operational stock.

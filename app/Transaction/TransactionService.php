@@ -45,7 +45,7 @@ final class TransactionService
         return $transaction;
     }
 
-    public function listing(int $page = 1, string $search = '', ?Type $type = null): array
+    public function listing(int $page = 1, string $search = '', ?Type $type = null, ?string $organizationId = null): array
     {
         $this->access->requirePermission('view');
         $query = $this->em->createQueryBuilder()->select('t')->from(Transaction::class, 't');
@@ -55,6 +55,16 @@ final class TransactionService
 
         if (null !== $type) {
             $query->andWhere('t.type = :type')->setParameter('type', $type->value);
+        }
+
+        if (null !== $organizationId && '' !== $organizationId && $this->access->isAdmin()) {
+            $organization = $this->reference(Organization::class, $organizationId);
+            $condition = match ($type) {
+                Type::RECEIPT => 't.toOrganization = :filterOrganization',
+                Type::DISPOSAL => 't.fromOrganization = :filterOrganization',
+                default => 't.fromOrganization = :filterOrganization OR t.toOrganization = :filterOrganization',
+            };
+            $query->andWhere($condition)->setParameter('filterOrganization', $organization);
         }
 
         if ('' !== $search) {
