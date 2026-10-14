@@ -34,9 +34,7 @@ final readonly class SingleLoginSubscriber implements EventSubscriberInterface
         private UserProviderFactory    $userProviderFactory,
         private CacheItemPoolInterface $cache,
         private EntityManagerInterface $entityManager,
-    )
-    {
-    }
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -73,8 +71,6 @@ final readonly class SingleLoginSubscriber implements EventSubscriberInterface
             return;
         }
 
-        // Run after routing, before the firewall: discard the stale authentication
-        // state but allow a new login submission to reach the authenticator.
         $request->getSession()->invalidate();
         $route = $request->attributes->get('_route');
         if (AdminContext::LOGIN_ROUTE === $route || (AdminContext::ADMIN_ROUTE === $route && $request->isMethod('POST'))) {
