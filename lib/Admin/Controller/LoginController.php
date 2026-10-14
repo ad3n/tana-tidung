@@ -27,9 +27,7 @@ final class LoginController extends Base
             'username' => $this->authenticationUtils->getLastUsername(),
         ]);
 
-        $response->setSharedMaxAge(2700);
-        $response->setPublic();
-        $response->setEtag(sha1($response->getContent()));
+        $response->headers->set('Cache-Control', 'private, no-store');
 
         return $response;
     }

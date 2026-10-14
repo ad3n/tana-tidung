@@ -1,0 +1,50 @@
+{% extends 'layout/main.html.twig' %}
+{% block stylesheets %}{% endblock %}
+{% block javascripts %}{% endblock %}
+{% block content %}
+    {% set can_edit = is_granted('edit', convert_to_menu('item')) %}
+    <div class="row">
+        <div class="col-lg-6 col-md-12">
+            <div class="card">
+                <div class="card-header"><h4>Konversi Satuan — {{ data.name }}</h4></div>
+                <div class="card-body">
+                    <p>Satuan dasar: <strong>{{ data.unit ? data.unit.name : 'Belum ditentukan' }}</strong></p>
+                    {% if data.unit %}<p>1 {{ data.unit.name }} = 1 {{ data.unit.name }} (otomatis).</p>{% endif %}
+                    <table class="table">
+                        <thead><tr><th>Satuan Input</th><th>Isi dalam Satuan Dasar</th>{% if can_edit %}<th>Aksi</th>{% endif %}</tr></thead>
+                        <tbody>
+                        {% for conversion in conversions %}
+                            <tr>
+                                <td>{{ conversion.unit.name }}</td>
+                                <td>{{ conversion.factor }} {{ data.unit.name }}</td>
+                                {% if can_edit %}<td>
+                                    <form method="post" action="{{ path('KejawenLab\\Application\\Admin\\Controller\\Item\\DeleteConversion', {id: data.id, conversionId: conversion.id}) }}" onsubmit="return confirm('Hapus konversi satuan ini?')">
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Hapus</button>
+                                    </form>
+                                </td>{% endif %}
+                            </tr>
+                        {% else %}<tr><td colspan="{{ can_edit ? 3 : 2 }}">Belum ada konversi satuan.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer"><a class="btn btn-outline-secondary" href="{{ path('KejawenLab\\Application\\Admin\\Controller\\Item\\Get', {id: data.id}) }}">Kembali</a></div>
+            </div>
+        </div>
+        {% if can_edit %}
+            <div class="col-lg-6 col-md-12">
+                <div class="card">
+                    <div class="card-header"><h4>Tambah Konversi Satuan</h4></div>
+                    {% if data.unit %}
+                        {{ form_start(form) }}
+                        <div class="card-body">
+                            <p>Isi per satuan dinyatakan dalam <strong>{{ data.unit.name }}</strong>.</p>
+                            {{ form_widget(form) }}
+                        </div>
+                        <div class="card-footer"><button type="submit" class="btn btn-outline-primary">Simpan</button><button type="reset" class="btn btn-outline-secondary ml-1">Batal</button></div>
+                        {{ form_end(form) }}
+                    {% else %}<div class="card-body">Pilih satuan dasar pada form Barang terlebih dahulu.</div>{% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

@@ -8,8 +8,9 @@
         <meta name="author" content="Muhamad Surya Iksanduin" />
         <meta name="email" content="surya.iksanudin@gmail.com" />
         <meta name="msapplication-TileColor" content="#ffffff">
-        <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
+        <meta name="msapplication-TileImage" content="{{ asset('logo-tana-tidung.png') }}">
         <meta name="theme-color" content="#ffffff">
+        <link rel="icon" type="image/png" href="{{ asset('logo-tana-tidung.png') }}">
         <title>{{- sas.app_description ~ ' | ' ~ (page_title | trans({}, 'pages')) -}}</title>
         <link rel="stylesheet" href="{{- preload(asset('plugins/coreui-icons/css/all.min.css'), {as: 'style'}) -}}">
         <link rel="stylesheet" href="{{- preload(asset('dist/css/adminlte.min.css'), {as: 'style'}) -}}">

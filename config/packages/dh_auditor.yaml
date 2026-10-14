@@ -26,3 +26,6 @@ dh_auditor:
                 KejawenLab\Application\Entity\Employee: ~
                 KejawenLab\Application\Entity\Unit: ~
                 KejawenLab\Application\Entity\Source: ~
+                KejawenLab\Application\Entity\FiscalYear: ~
+                KejawenLab\Application\Entity\Category: ~
+                KejawenLab\Application\Entity\Item: ~

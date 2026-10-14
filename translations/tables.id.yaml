@@ -95,3 +95,28 @@ sas:
                 level: 'Jabatan'
                 code: 'Kode Pegawai'
                 name: 'Nama Pegawai'
+            unit:
+                code: 'Kode Satuan'
+                name: 'Nama Satuan'
+            source:
+                name: 'Nama Sumber Barang'
+            fiscalyear:
+                year: 'Tahun Anggaran'
+                status: 'Status'
+            category:
+                name: 'Nama Kategori'
+            item:
+                category: 'Kategori'
+                code: 'Kode Barang'
+                name: 'Nama Barang'
+                status: 'Kedaluwarsa'
+
+sas.table.column.item.unit: Satuan Dasar
+sas.table.column.unit.type: Jenis Satuan
+unit.type.unclassified: Belum ditentukan
+unit.type.mass: Massa
+unit.type.volume: Volume
+unit.type.count: Hitungan
+unit.type.length: Panjang
+unit.type.area: Luas
+unit.type.package: Kemasan

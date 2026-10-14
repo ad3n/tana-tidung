@@ -22,6 +22,7 @@ use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 #[ORM\Entity(repositoryClass: UnitRepository::class)]
 #[ORM\Table(name: 'units')]
 #[UniqueEntity(fields: ['code'])]
+#[\KejawenLab\Application\Validation\UnitConfiguration]
 class Unit implements UnitInterface
 {
     use BlameableEntity;
@@ -47,6 +48,23 @@ class Unit implements UnitInterface
     #[Groups(['read'])]
     #[ORM\Column(length: 255)]
     private ?string $name = null;
+
+    public const TYPES = ['mass', 'volume', 'count', 'length', 'area', 'package'];
+
+    #[Assert\Choice(choices: self::TYPES)]
+    #[Groups(['read'])]
+    #[ORM\Column(length: 20, options: ['default' => 'unclassified'])]
+    private string $type = 'unclassified';
+
+    public function getType(): string
+    {
+        return $this->type;
+    }
+
+    public function setType(?string $type): void
+    {
+        $this->type = $type ?? 'unclassified';
+    }
 
     public function getId(): ?string
     {

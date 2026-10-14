@@ -692,3 +692,31 @@ Lisensi dari Semart Api Skeleton adalah [MIT License](LICENSE) namun proyek yang
 
 #### Client/Api Consumer Management
 ![Consumer](doc/assets/consumer.png)
+
+## Satuan dasar dan konversi barang
+
+Master Satuan memiliki jenis Massa, Volume, Hitungan, Panjang, Luas, atau Kemasan.
+Barang wajib memilih satuan dasar. Data lama tidak diklasifikasikan otomatis:
+satuan lama berstatus “Belum ditentukan” dan barang lama belum memiliki satuan dasar.
+Lengkapi jenis Satuan terlebih dahulu, kemudian satuan dasar Barang.
+
+Buka Barang → Lihat → Konversi Satuan untuk mendaftarkan satuan input dan isinya.
+Contoh: satuan dasar Kg, konversi Karung 25 kg (jenis Kemasan), faktor 25.
+Konversi hanya boleh ke jenis yang sama atau dari Kemasan ke satuan dasar.
+Kg → Liter ditolak. Satuan dasar otomatis memiliki faktor 1; satuan konversi
+per barang tidak boleh duplikat. Faktor disimpan sebagai DECIMAL(20,6), harus
+positif, dengan maksimal 6 angka desimal. Gunakan titik sebagai pemisah desimal.
+
+Halaman konversi mengikuti hak View Barang; tambah/hapus membutuhkan Edit Barang.
+Satuan dasar tidak dapat diganti selama konversi masih ada. Jenis satuan yang
+sudah digunakan tidak dapat diubah. Form konversi direset setelah berhasil disimpan.
+Modul penerimaan/pengeluaran belum menggunakan konversi ini; saat modul tersebut
+tersedia, simpan salinan faktor dan jumlah satuan dasar pada detail transaksi.
+
+Untuk memperbarui skema instalasi lama (tanpa memuat ulang fixtures):
+
+```bash
+docker compose exec app php bin/console doctrine:schema:update --dump-sql
+docker compose exec app php bin/console doctrine:schema:update --force --no-interaction
+docker compose exec app php tests/item-conversions-smoke.php
+```

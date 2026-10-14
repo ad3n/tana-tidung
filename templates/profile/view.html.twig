@@ -61,55 +61,45 @@
                 </form>
             </div>
         </div>
-        <div class="col-lg-12 col-md-12 col-sm-12">
-            <div class="card">
-                <div class="card-body p-0">
-                    <div class="row">
-                        <div class="col-lg-12 col-md-12 col-sm-12">
-                            <form role="form" method="post" action="{{- path('KejawenLab\\ApiSkeleton\\Admin\\Controller\\Me\\CreateApiClient') -}}" enctype="multipart/form-data">
-                                <div class="float-left input-group col-lg-12 col-md-12 col-sm-12 p-1">
-                                    <input type="text" name="name" id="sasApiClient" class="form-control float-right" placeholder="{{- 'sas.page.api_client.add' | trans({}, 'pages') -}}">
-                                    <div class="input-group-append">
-                                        <button type="submit" id="sasCreateApiKey" class="btn btn-default">
-                                            <i class="cib-addthis pr-1 align-middle"></i>{{- 'sas.form.action.add' | trans({}, 'forms') -}}
-                                        </button>
-                                    </div>
+        {% if paginator['items'] is not empty %}
+            <div class="col-lg-12 col-md-12 col-sm-12">
+                <div class="card">
+                    <div class="card-body p-0">
+                        <div class="row">
+                            {%- for key, data in paginator['items'] -%}
+                                <div class="col-lg-6 col-md-12 col-sm-12">
+                                    <ul class="list-group p-1">
+                                        <li class="list-group-item text-primary">
+                                            No<a class="float-right">{{- (key + 1) + (paginator['per_page'] * (paginator['page'] - 1)) -}}</a>
+                                        </li>
+                                        {%- for property in api_clients -%}
+                                            {%- if 'id' != property.name and 'user' != property.name -%}
+                                                <li class="list-group-item text-primary">
+                                                    {{- ('sas.table.column.apiclient.' ~ property.name) | trans({}, 'tables') -}}<a class="float-right">{{- attribute(data, property.name) -}}</a>
+                                                </li>
+                                            {%- endif -%}
+                                        {%- endfor -%}
+                                        <li class="list-group-item p-1">
+                                            <div class="btn-group col-lg-12 col-md-12 col-sm-12" role="group">
+                                                <button type="button"
+                                                        data-path="{{- path('KejawenLab\\ApiSkeleton\\Admin\\Controller\\Me\\DeleteApiClient', {id: data.id}) -}}"
+                                                        data-notification="{{- 'sas.notification.delete.message' | trans({'%data%': data.name}, 'notifications') -}}"
+                                                        class="btn btn-sm btn-outline-danger delete"
+                                                        data-toggle="modal"
+                                                        data-target="#sasDeleteModal"
+                                                >
+                                                    {{- 'sas.table.action.delete' | trans({}, 'tables') -}}
+                                                </button>
+                                            </div>
+                                        </li>
+                                    </ul>
                                 </div>
-                            </form>
+                            {%- endfor -%}
                         </div>
-                        {%- for key, data in paginator['items'] -%}
-                            <div class="col-lg-6 col-md-12 col-sm-12">
-                                <ul class="list-group p-1">
-                                    <li class="list-group-item text-primary">
-                                        No<a class="float-right">{{- (key + 1) + (paginator['per_page'] * (paginator['page'] - 1)) -}}</a>
-                                    </li>
-                                    {%- for property in api_clients -%}
-                                        {%- if 'id' != property.name and 'user' != property.name -%}
-                                            <li class="list-group-item text-primary">
-                                                {{- ('sas.table.column.apiclient.' ~ property.name) | trans({}, 'tables') -}}<a class="float-right">{{- attribute(data, property.name) -}}</a>
-                                            </li>
-                                        {%- endif -%}
-                                    {%- endfor -%}
-                                    <li class="list-group-item p-1">
-                                        <div class="btn-group col-lg-12 col-md-12 col-sm-12" role="group">
-                                            <button type="button"
-                                                    data-path="{{- path('KejawenLab\\ApiSkeleton\\Admin\\Controller\\Me\\DeleteApiClient', {id: data.id}) -}}"
-                                                    data-notification="{{- 'sas.notification.delete.message' | trans({'%data%': data.name}, 'notifications') -}}"
-                                                    class="btn btn-sm btn-outline-danger delete"
-                                                    data-toggle="modal"
-                                                    data-target="#sasDeleteModal"
-                                            >
-                                                {{- 'sas.table.action.delete' | trans({}, 'tables') -}}
-                                            </button>
-                                        </div>
-                                    </li>
-                                </ul>
-                            </div>
-                        {%- endfor -%}
                     </div>
                 </div>
             </div>
-        </div>
+        {% endif %}
     </div>
     <div class="modal fade" id="sasDeleteModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">

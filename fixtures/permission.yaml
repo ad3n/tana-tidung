@@ -9,6 +9,12 @@
 - { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#group1', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#media', addable: true, editable: true, viewable: true, deletable: true }
 - { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#group1', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#audit', addable: true, editable: true, viewable: true, deletable: true }
 - { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#group1', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#master', addable: true, editable: true, viewable: true, deletable: true }
-- { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#group1', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#master_level', addable: true, editable: true, viewable: true, deletable: true }
-- { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#group1', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#master_organization', addable: true, editable: true, viewable: true, deletable: true }
-- { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#group1', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#master_employee', addable: true, editable: true, viewable: true, deletable: true }
+- { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#group1', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#organization_level', addable: true, editable: true, viewable: true, deletable: true }
+- { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#group1', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#organization_organization', addable: true, editable: true, viewable: true, deletable: true }
+- { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#group1', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#organization_employee', addable: true, editable: true, viewable: true, deletable: true }
+- { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#group1', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#master_unit', addable: true, editable: true, viewable: true, deletable: true }
+- { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#group1', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#master_source', addable: true, editable: true, viewable: true, deletable: true }
+- { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#group1', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#organization', addable: true, editable: true, viewable: true, deletable: true }
+- { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#group1', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#administrator_fiscalyear', addable: true, editable: true, viewable: true, deletable: true }
+- { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#group1', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#master_category', addable: true, editable: true, viewable: true, deletable: true }
+- { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#group1', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#master_item', addable: true, editable: true, viewable: true, deletable: true }

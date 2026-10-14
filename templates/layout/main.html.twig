@@ -6,7 +6,7 @@
         {%- include 'layout/navigation.html.twig' -%}
         <aside class="main-sidebar sidebar-dark-primary elevation-4">
             <a href="{{- path('admin_home') -}}" class="brand-link">
-                <img src="{{- asset('logo.gif') -}}" alt="Semart Api Skeleton" class="brand-image img-circle elevation-3" style="opacity: .8">
+                <img src="{{- asset('logo-tana-tidung.png') -}}" alt="Logo Pemerintah Kabupaten Tana Tidung" class="brand-image" style="width: 30px; height: 36px; max-height: 36px; object-fit: contain">
                 <span class="brand-text font-weight-light">{{- sas.app_title -}}</span>
             </a>
             <div class="sidebar">
@@ -18,11 +18,6 @@
                             </a>
                         </li>
                         {{ render_menu() | raw }}
-                        <li class="nav-item">
-                            <a href="{{ path('app.swagger_ui') }}" class="nav-link" target="_blank">
-                                <i class="nav-icon cil-book"></i><p>Dokumentasi Api</p>
-                            </a>
-                        </li>
                     </ul>
                 </nav>
             </div>

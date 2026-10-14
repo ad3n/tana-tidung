@@ -44,7 +44,7 @@ final readonly class SingleLoginSubscriber implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            RequestEvent::class => [['validate', 127]],
+            RequestEvent::class => [['validate', 16]],
             JWTCreatedEvent::class => 'create',
             JWTDecodedEvent::class => 'decode',
             Events::JWT_CREATED => 'create',
@@ -73,9 +73,15 @@ final readonly class SingleLoginSubscriber implements EventSubscriberInterface
             return;
         }
 
-        $event->getRequest()->getSession()->clear();
+        // Run after routing, before the firewall: discard the stale authentication
+        // state but allow a new login submission to reach the authenticator.
+        $request->getSession()->invalidate();
+        $route = $request->attributes->get('_route');
+        if (AdminContext::LOGIN_ROUTE === $route || (AdminContext::ADMIN_ROUTE === $route && $request->isMethod('POST'))) {
+            return;
+        }
 
-        $event->setResponse(new RedirectResponse($this->urlGenerator->generate('admin_logout')));
+        $event->setResponse(new RedirectResponse($this->urlGenerator->generate(AdminContext::LOGIN_ROUTE)));
     }
 
     public function decode(JWTDecodedEvent $event): void
