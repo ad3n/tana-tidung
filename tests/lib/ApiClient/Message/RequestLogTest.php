@@ -21,7 +21,7 @@ class RequestLogTest extends TestCase
 
         $request = Request::createFromGlobals();
 
-        $requestLog = new RequestLog($apiClient, $request);
+        $requestLog = new RequestLog($apiClient, $request, new \Symfony\Component\HttpFoundation\Response('test', 201));
 
         $this->assertSame('test', $requestLog->getApiClientId());
         $this->assertSame($request->headers->all(), $requestLog->getHeaders());
@@ -38,7 +38,7 @@ class RequestLogTest extends TestCase
         $request = Request::createFromGlobals();
         $request->query->set('test', true);
 
-        $requestLog = new RequestLog($apiClient, $request);
+        $requestLog = new RequestLog($apiClient, $request, new \Symfony\Component\HttpFoundation\Response('test', 201));
 
         $this->assertSame('test', $requestLog->getApiClientId());
         $this->assertSame($request->headers->all(), $requestLog->getHeaders());

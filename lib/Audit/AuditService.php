@@ -50,12 +50,12 @@ final class AuditService
         $record = new Audit($entity);
         foreach ($audits as $audit) {
             $record->addItem(new AuditItem(
-                $audit->getType(),
+                $audit->type,
                 $audit->getDiffs(),
-                $audit->getCreatedAt(),
-                $audit->getUserId(),
-                $audit->getUsername(),
-                $audit->getIp()
+                $audit->createdAt,
+                $audit->userId,
+                $audit->username,
+                $audit->ip
             ));
         }
 

@@ -3,14 +3,42 @@ services:
         build:
             context: .
             dockerfile: Dockerfile
+        init: true
+        restart: unless-stopped
+        environment:
+            APP_ENV: prod
+            APP_DEBUG: "0"
         env_file:
-          - .env
+            - .env
         volumes:
-            - .:/semart:cached
+            - .:/semart
             - cache:/semart/var/cache
             - vendor:/semart/vendor
+        expose:
+            - "9000"
+        healthcheck:
+            test: ["CMD-SHELL", "SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong"]
+            interval: 15s
+            timeout: 5s
+            retries: 5
+            start_period: 120s
+    nginx:
+        image: nginx:1.30-alpine
+        restart: unless-stopped
         ports:
-            - "9876:9501"
+            - "9876:80"
+        volumes:
+            - .:/semart:ro
+            - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+        depends_on:
+            app:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/health"]
+            interval: 15s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
 volumes:
     cache:
     vendor:

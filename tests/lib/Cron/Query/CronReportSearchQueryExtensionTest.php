@@ -21,7 +21,7 @@ class CronReportSearchQueryExtensionTest extends TestCase
     {
         $queryExtension = new CronReportSearchQueryExtension(new AliasHelper());
 
-        $report = $this->createMock(CronReportInterface::class);
+        $report = $this->createStub(CronReportInterface::class);
 
         $this->assertSame(true, $queryExtension->support($report::class, Request::createFromGlobals()));
     }

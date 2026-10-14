@@ -7,7 +7,7 @@ namespace KejawenLab\ApiSkeleton\Admin\Controller;
 use KejawenLab\ApiSkeleton\Admin\AdminContext;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController as Base;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 
 /**

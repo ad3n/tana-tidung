@@ -15,7 +15,7 @@ class ShellJobTest extends TestCase
 {
     public function testGetCron(): void
     {
-        $cron = $this->createMock(CronInterface::class);
+        $cron = $this->createStub(CronInterface::class);
 
         $shellJob = new ShellJob($cron);
 

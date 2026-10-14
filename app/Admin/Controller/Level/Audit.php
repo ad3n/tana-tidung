@@ -1,0 +1,53 @@
+<?php
+
+declare(strict_types=1);
+
+namespace KejawenLab\Application\Admin\Controller\Level;
+
+use DH\Auditor\Provider\Doctrine\Persistence\Reader\Reader;
+use KejawenLab\ApiSkeleton\Admin\Controller\AbstractController;
+use KejawenLab\Application\Entity\Level;
+use KejawenLab\Application\Level\LevelService;
+use KejawenLab\ApiSkeleton\Audit\AuditService;
+use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
+use KejawenLab\ApiSkeleton\Util\CacheFactory;
+use ReflectionClass;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
+
+/**
+ * @author Muhamad Surya Iksanudin<surya.iksanudin@gmail.com>
+ */
+#[Permission(menu: 'AUDIT', actions: [Permission::VIEW])]
+final class Audit extends AbstractController
+{
+    public function __construct(
+        private readonly RequestStack $requestStack,
+        private LevelService $service,
+        private readonly CacheFactory $cache,
+        private AuditService $audit,
+        private Reader $reader,
+    ) {
+        parent::__construct($this->requestStack->getCurrentRequest(), $this->service, $this->cache);
+    }
+
+    #[Route(path: '/levels/{id}/audit', name: self::class, methods: ['GET'], priority: -255)]
+    public function __invoke(string $id): Response
+    {
+        if (!$entity = $this->service->get($id)) {
+            $this->addFlash('error', 'sas.page.level.not_found');
+
+            return new RedirectResponse($this->generateUrl(Main::class));
+        }
+
+        if (!$this->reader->getProvider()->isAuditable(Level::class)) {
+            $this->addFlash('error', 'sas.page.audit.not_found');
+
+            return new RedirectResponse($this->generateUrl(Main::class));
+        }
+
+        return $this->renderAudit($this->audit->getAudits($entity, $id), new ReflectionClass(Level::class));
+    }
+}

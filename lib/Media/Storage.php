@@ -8,7 +8,7 @@ use KejawenLab\ApiSkeleton\Media\Model\MediaInterface;
 use LogicException;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
-use Vich\UploaderBundle\Mapping\PropertyMapping;
+use Vich\UploaderBundle\Mapping\PropertyMappingInterface;
 
 /**
  * @author Muhamad Surya Iksanudin<surya.iksanudin@gmail.com>
@@ -16,10 +16,10 @@ use Vich\UploaderBundle\Mapping\PropertyMapping;
 final class Storage extends AbstractStorage
 {
     #[\Override]
-    public function remove($obj, PropertyMapping $mapping, ?string $forcedFilename = null): ?bool
+    public function remove($obj, PropertyMappingInterface $mapping, ?string $forcedFilename = null): ?bool
     {
         if (!$obj instanceof MediaInterface) {
-            parent::upload($obj, $mapping);
+            return parent::remove($obj, $mapping, $forcedFilename);
         }
 
         $name = $mapping->getFileName($obj);
@@ -31,10 +31,12 @@ final class Storage extends AbstractStorage
     }
 
     #[\Override]
-    public function upload($obj, PropertyMapping $mapping): void
+    public function upload($obj, PropertyMappingInterface $mapping): void
     {
         if (!$obj instanceof MediaInterface) {
             parent::upload($obj, $mapping);
+
+            return;
         }
 
         $file = $mapping->getFile($obj);
@@ -66,7 +68,7 @@ final class Storage extends AbstractStorage
         $this->doUpload($mapping, $file, $dir, $name);
     }
 
-    private function getUploadDir(MediaInterface $media, PropertyMapping $mapping): string
+    private function getUploadDir(MediaInterface $media, PropertyMappingInterface $mapping): string
     {
         $target = null;
         if (null !== $media->getFolder()) {

@@ -42,6 +42,6 @@ class SearchQueryExtensionTest extends TestCase
     {
         $filter = new SearchQueryExtension($this->aliasHelper);
 
-        $this->assertSame(true, $filter->support($this->createMock(ApiClientInterface::class)::class, Request::createFromGlobals()));
+        $this->assertSame(true, $filter->support($this->createStub(ApiClientInterface::class)::class, Request::createFromGlobals()));
     }
 }

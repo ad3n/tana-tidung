@@ -12,13 +12,10 @@ use KejawenLab\ApiSkeleton\Util\CacheFactory;
 use KejawenLab\ApiSkeleton\Util\StringUtil;
 use ReflectionClass;
 use ReflectionProperty;
-use SebastianBergmann\ObjectReflector\ObjectReflector;
-use SebastianBergmann\RecursionContext\Context;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController as Base;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Throwable;
 
 /**
  * @author Muhamad Surya Iksanudin<surya.iksanudin@gmail.com>
@@ -32,110 +29,6 @@ abstract class AbstractController extends Base
         private readonly ?Paginator       $paginator = null,
     )
     {
-    }
-
-    #[\Override]
-    protected function renderView(string $view, array $parameters = []): string
-    {
-        $params = [];
-        foreach ($parameters as $parameter) {
-            if ($this->canBeSerialized($parameter)) {
-                $params[] = $parameter;
-            }
-        }
-
-        $params = array_merge($params, $this->request->getSession()->all());
-        $params = array_merge($params, $this->request->query->all());
-
-        $key = sprintf('%s_%s', sha1($view), sha1(serialize($params)));
-        $data = $this->cache->getCache($key, 'view');
-        if ([] !== $data) {
-            return $data['content'];
-        }
-
-        return parent::renderView($view, $parameters);
-    }
-
-    private function canBeSerialized($variable): bool
-    {
-        if (is_scalar($variable)) {
-            return true;
-        }
-
-        if (null === $variable) {
-            return true;
-        }
-
-        if (\is_resource($variable)) {
-            return false;
-        }
-
-        foreach ($this->enumerateObjectsAndResources($variable) as $value) {
-            if (\is_resource($value)) {
-                return false;
-            }
-
-            if (\is_object($value)) {
-                $class = new ReflectionClass($value);
-                if ($class->isAnonymous()) {
-                    return false;
-                }
-
-                try {
-                    serialize($value);
-                } catch (Throwable) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    private function enumerateObjectsAndResources($variable): array
-    {
-        $processed = \func_get_args()[1] ?? new Context();
-        $result = [];
-        if ($processed->contains($variable)) {
-            return $result;
-        }
-
-        $array = $variable;
-        $processed->add($variable);
-        if (\is_array($variable)) {
-            foreach ($array as $element) {
-                if (!\is_array($element) && !\is_object($element) && !\is_resource($element)) {
-                    continue;
-                }
-
-                if (!\is_resource($element)) {
-                    $result = array_merge(
-                        $result,
-                        $this->enumerateObjectsAndResources($element, $processed)
-                    );
-                } else {
-                    $result[] = $element;
-                }
-            }
-        } else {
-            $result[] = $variable;
-            foreach (new ObjectReflector()->getProperties($variable) as $value) {
-                if (!\is_array($value) && !\is_object($value) && !\is_resource($value)) {
-                    continue;
-                }
-
-                if (!\is_resource($value)) {
-                    $result = array_merge(
-                        $result,
-                        $this->enumerateObjectsAndResources($value, $processed)
-                    );
-                } else {
-                    $result[] = $value;
-                }
-            }
-        }
-
-        return $result;
     }
 
     protected function renderAudit(Audit $audit, ReflectionClass $class): Response

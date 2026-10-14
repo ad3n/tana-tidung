@@ -1,0 +1,52 @@
+<?php
+
+declare(strict_types=1);
+
+namespace KejawenLab\Application\Controller\Level;
+
+use FOS\RestBundle\Controller\AbstractFOSRestController;
+use FOS\RestBundle\Controller\Annotations\Get;
+use FOS\RestBundle\View\View;
+use KejawenLab\Application\Entity\Level;
+use KejawenLab\Application\Level\LevelService;
+use KejawenLab\ApiSkeleton\Pagination\Paginator;
+use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
+use Nelmio\ApiDocBundle\Attribute\Model;
+use Nelmio\ApiDocBundle\Attribute\Security;
+use OpenApi\Attributes as OA;
+use OpenApi\Attributes\Parameter;
+use OpenApi\Attributes\Response;
+use OpenApi\Attributes\Tag;
+use Symfony\Component\HttpFoundation\Request;
+
+/**
+ * @author Muhamad Surya Iksanudin<surya.iksanudin@gmail.com>
+ */
+#[Permission(menu: 'LEVEL', actions: [Permission::VIEW])]
+#[Tag(name: 'Level')]
+final class GetAll extends AbstractFOSRestController
+{
+    public function __construct(private LevelService $service, private Paginator $paginator)
+    {
+    }
+
+    #[Get(data: '/levels', name: self::class)]
+    #[Security(name: 'Bearer')]
+    #[Parameter(name: 'page', in: 'query', schema: new OA\Schema(type: 'integer', format: 'int32'))]
+    #[Parameter(name: 'limit', in: 'query', schema: new OA\Schema(type: 'integer', format: 'int32'))]
+    #[Response(
+        response: 200,
+        description: 'Level list',
+        content: new OA\MediaType(
+            mediaType: 'application/json',
+            schema: new OA\Schema(
+                type: 'array',
+                items: new OA\Items(ref: new Model(type: Level::class, groups: ['read'])),
+            ),
+        ),
+    )]
+    public function __invoke(Request $request): View
+    {
+        return $this->view($this->paginator->paginate($this->service->getQueryBuilder(), $request, Level::class));
+    }
+}

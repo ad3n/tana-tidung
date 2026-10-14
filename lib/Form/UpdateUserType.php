@@ -28,10 +28,7 @@ final class UpdateUserType extends AbstractType
         $builder->add('file', FileType::class, [
             'required' => true,
             'label' => 'sas.form.field.user.profileImage',
-            'constraints' => new File([
-                'maxSize' => '1024k',
-                'mimeTypes' => ['image/png', 'image/jpg', 'image/jpeg'],
-            ]),
+            'constraints' => new File(maxSize: '1024k', mimeTypes: ['image/png', 'image/jpg', 'image/jpeg']),
             'documentation' => [
                 'type' => 'string',
                 'format' => 'binary',

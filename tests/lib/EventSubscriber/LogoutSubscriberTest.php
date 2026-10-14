@@ -23,9 +23,16 @@ class LogoutSubscriberTest extends TestCase
         $event->expects($this->once())->method('getRequest')->willReturn($request);
         $event->expects($this->never())->method('setResponse');
 
-        $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
+        $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
 
-        $apiClientRequest = new LogoutSubscriber($urlGenerator);
+        $cache = $this->createStub(\Psr\Cache\CacheItemPoolInterface::class);
+        $configuration = new \Doctrine\ORM\Configuration();
+        $configuration->setQueryCache($cache);
+        $configuration->setResultCache($cache);
+        $entityManager = $this->createStub(\Doctrine\ORM\EntityManagerInterface::class);
+        $entityManager->method('getConfiguration')->willReturn($configuration);
+
+        $apiClientRequest = new LogoutSubscriber($urlGenerator, $cache, $entityManager);
         $apiClientRequest->redirect($event);
     }
 
@@ -38,9 +45,16 @@ class LogoutSubscriberTest extends TestCase
         $event->expects($this->once())->method('getRequest')->willReturn($request);
         $event->expects($this->never())->method('setResponse');
 
-        $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
+        $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
 
-        $apiClientRequest = new LogoutSubscriber($urlGenerator);
+        $cache = $this->createStub(\Psr\Cache\CacheItemPoolInterface::class);
+        $configuration = new \Doctrine\ORM\Configuration();
+        $configuration->setQueryCache($cache);
+        $configuration->setResultCache($cache);
+        $entityManager = $this->createStub(\Doctrine\ORM\EntityManagerInterface::class);
+        $entityManager->method('getConfiguration')->willReturn($configuration);
+
+        $apiClientRequest = new LogoutSubscriber($urlGenerator, $cache, $entityManager);
         $apiClientRequest->redirect($event);
     }
 
@@ -56,7 +70,14 @@ class LogoutSubscriberTest extends TestCase
         $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
         $urlGenerator->expects($this->once())->method('generate')->willReturn('/admin/fake');
 
-        $apiClientRequest = new LogoutSubscriber($urlGenerator);
+        $cache = $this->createStub(\Psr\Cache\CacheItemPoolInterface::class);
+        $configuration = new \Doctrine\ORM\Configuration();
+        $configuration->setQueryCache($cache);
+        $configuration->setResultCache($cache);
+        $entityManager = $this->createStub(\Doctrine\ORM\EntityManagerInterface::class);
+        $entityManager->method('getConfiguration')->willReturn($configuration);
+
+        $apiClientRequest = new LogoutSubscriber($urlGenerator, $cache, $entityManager);
         $apiClientRequest->redirect($event);
     }
 

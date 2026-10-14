@@ -19,9 +19,9 @@ class CronScheduleFormatValidatorTest extends TestCase
 {
     public function testInvalidConstraint(): void
     {
-        $validator = new CronScheduleFormatValidator(new CrontabValidator(), $this->createMock(TranslatorInterface::class));
+        $validator = new CronScheduleFormatValidator(new CrontabValidator(), $this->createStub(TranslatorInterface::class));
 
-        $constraint = $this->createMock(Constraint::class);
+        $constraint = $this->createStub(Constraint::class);
 
         $this->expectException(UnexpectedTypeException::class);
 
@@ -30,7 +30,7 @@ class CronScheduleFormatValidatorTest extends TestCase
 
     public function testInvalidValue(): void
     {
-        $validator = new CronScheduleFormatValidator(new CrontabValidator(), $this->createMock(TranslatorInterface::class));
+        $validator = new CronScheduleFormatValidator(new CrontabValidator(), $this->createStub(TranslatorInterface::class));
 
         $this->expectException(UnexpectedTypeException::class);
 
@@ -39,7 +39,7 @@ class CronScheduleFormatValidatorTest extends TestCase
 
     public function testValidate(): void
     {
-        $validator = new CronScheduleFormatValidator(new CrontabValidator(), $this->createMock(TranslatorInterface::class));
+        $validator = new CronScheduleFormatValidator(new CrontabValidator(), $this->createStub(TranslatorInterface::class));
 
         $validator->validate('* * * * *', new CronScheduleFormat());
 

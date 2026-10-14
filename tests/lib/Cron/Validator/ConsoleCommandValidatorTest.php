@@ -21,12 +21,12 @@ class ConsoleCommandValidatorTest extends KernelTestCase
 
     public function testInvalidConstraint(): void
     {
-        $kernel = $this->createMock(KernelInterface::class);
-        $translator = $this->createMock(TranslatorInterface::class);
+        $kernel = $this->createStub(KernelInterface::class);
+        $translator = $this->createStub(TranslatorInterface::class);
 
         $validator = new ConsoleCommandValidator($kernel, $translator);
 
-        $constraint = $this->createMock(Constraint::class);
+        $constraint = $this->createStub(Constraint::class);
 
         $this->expectException(UnexpectedTypeException::class);
 
@@ -35,8 +35,8 @@ class ConsoleCommandValidatorTest extends KernelTestCase
 
     public function testInvalidValue(): void
     {
-        $kernel = $this->createMock(KernelInterface::class);
-        $translator = $this->createMock(TranslatorInterface::class);
+        $kernel = $this->createStub(KernelInterface::class);
+        $translator = $this->createStub(TranslatorInterface::class);
 
         $validator = new ConsoleCommandValidator($kernel, $translator);
 
@@ -48,7 +48,7 @@ class ConsoleCommandValidatorTest extends KernelTestCase
     public function testValidate(): void
     {
         $kernel = self::bootKernel();
-        $translator = $this->createMock(TranslatorInterface::class);
+        $translator = $this->createStub(TranslatorInterface::class);
 
         $validator = new ConsoleCommandValidator($kernel, $translator);
 

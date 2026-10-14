@@ -3,47 +3,108 @@ services:
         build:
             context: .
             dockerfile: Dockerfile
+        init: true
+        restart: unless-stopped
         env_file:
-          - .env
+            - .env
         volumes:
-            - .:/semart:cached
+            - .:/semart
             - cache:/semart/var/cache
             - vendor:/semart/vendor
-        ports:
-            - "9876:9501"
+        expose:
+            - "9000"
+        healthcheck:
+            test: ["CMD-SHELL", "SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong"]
+            interval: 15s
+            timeout: 5s
+            retries: 5
+            start_period: 120s
         depends_on:
-            - session
-            - db
-            - messenger
+            session:
+                condition: service_healthy
+            db:
+                condition: service_healthy
+            messenger:
+                condition: service_healthy
+        networks:
+            - app
+    nginx:
+        image: nginx:1.30-alpine
+        restart: unless-stopped
+        ports:
+            - "9876:80"
+        volumes:
+            - .:/semart:ro
+            - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+        depends_on:
+            app:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/health"]
+            interval: 15s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
         networks:
             - app
     db:
-        image: postgres:alpine
+        image: postgres:18-alpine
+        restart: unless-stopped
         environment:
             POSTGRES_USER: semart
             POSTGRES_PASSWORD: semart
+            POSTGRES_DB: semart_skeleton
+        volumes:
+            - database:/var/lib/postgresql
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
         networks:
             - app
             - db
     adminer:
-        image: adminer:latest
+        image: adminer:5
+        restart: unless-stopped
+        environment:
+            ADMINER_DEFAULT_SERVER: db
         ports:
             - "6789:8080"
+        depends_on:
+            db:
+                condition: service_healthy
         networks:
             - db
     session:
-        image: redis:alpine
+        image: redis:8-alpine
+        restart: unless-stopped
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
         networks:
             - app
     messenger:
-        image: rabbitmq:management-alpine
+        image: rabbitmq:4-management-alpine
+        restart: unless-stopped
+        volumes:
+            - messenger:/var/lib/rabbitmq
         ports:
             - "12345:15672"
+        healthcheck:
+            test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+            interval: 10s
+            timeout: 10s
+            retries: 10
         networks:
             - app
 volumes:
     cache:
     vendor:
+    database:
+    messenger:
 networks:
     app: {}
     db: {}

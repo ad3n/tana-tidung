@@ -28,7 +28,7 @@ final class Voter extends SymfonyVoter
         return $subject instanceof MenuInterface;
     }
 
-    protected function voteOnAttribute(string $attribute, $subject, TokenInterface $token): bool
+    protected function voteOnAttribute(string $attribute, $subject, TokenInterface $token, ?\Symfony\Component\Security\Core\Authorization\Voter\Vote $vote = null): bool
     {
         $user = $token->getUser();
         if (!$user instanceof User) {

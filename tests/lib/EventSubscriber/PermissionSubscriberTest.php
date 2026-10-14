@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace KejawenLab\ApiSkeleton\Tests\EventSubscriber;
 
 use KejawenLab\ApiSkeleton\EventSubscriber\PermissionSubscriber;
-use KejawenLab\ApiSkeleton\Security\Annotation\Parser;
 use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
 use KejawenLab\ApiSkeleton\Security\Authorization\Ownership;
 use KejawenLab\ApiSkeleton\Security\Service\Authorization;
@@ -23,33 +22,32 @@ class PermissionSubscriberTest extends TestCase
 {
     public function testSubRequest(): void
     {
-        $parser = $this->createMock(Parser::class);
-        $authorization = $this->createMock(Authorization::class);
-        $ownership = $this->createMock(Ownership::class);
+        $authorization = $this->createStub(Authorization::class);
+        $ownership = $this->createStub(Ownership::class);
 
         $event = $this->createMock(ControllerEvent::class);
         $event->expects($this->once())->method('isMainRequest')->willReturn(false);
         $event->expects($this->never())->method('getController');
 
-        $apiClientRequest = new PermissionSubscriber($parser, $authorization, $ownership);
+        $apiClientRequest = new PermissionSubscriber($authorization, $ownership);
         $apiClientRequest->validate($event);
     }
 
     public function testController(): void
     {
-        $parser = $this->createMock(Parser::class);
-        $parser->expects($this->once())->method('parse')->willReturn(new Permission());
+        $permission = new Permission('TEST', [Permission::VIEW]);
 
         $authorization = $this->createMock(Authorization::class);
         $authorization->expects($this->once())->method('authorize')->willReturn(false);
 
-        $ownership = $this->createMock(Ownership::class);
+        $ownership = $this->createStub(Ownership::class);
 
         $event = $this->createMock(ControllerEvent::class);
         $event->expects($this->once())->method('isMainRequest')->willReturn(true);
         $event->expects($this->once())->method('getController')->willReturn(new StubController());
+        $event->method('getAttributes')->willReturn([Permission::class => [$permission]]);
 
-        $apiClientRequest = new PermissionSubscriber($parser, $authorization, $ownership);
+        $apiClientRequest = new PermissionSubscriber($authorization, $ownership);
 
         $this->expectException(AccessDeniedException::class);
 
@@ -58,12 +56,8 @@ class PermissionSubscriberTest extends TestCase
 
     public function testRequestAndOwnership(): void
     {
-        $permission = new Permission([
-            'ownership' => true,
-        ]);
+        $permission = new Permission('TEST', [Permission::VIEW], true);
 
-        $parser = $this->createMock(Parser::class);
-        $parser->expects($this->once())->method('parse')->willReturn($permission);
 
         $authorization = $this->createMock(Authorization::class);
         $authorization->expects($this->once())->method('authorize')->willReturn(true);
@@ -77,9 +71,10 @@ class PermissionSubscriberTest extends TestCase
         $event = $this->createMock(ControllerEvent::class);
         $event->expects($this->once())->method('isMainRequest')->willReturn(true);
         $event->expects($this->once())->method('getController')->willReturn(new StubController());
+        $event->method('getAttributes')->willReturn([Permission::class => [$permission]]);
         $event->expects($this->once())->method('getRequest')->willReturn($request);
 
-        $apiClientRequest = new PermissionSubscriber($parser, $authorization, $ownership);
+        $apiClientRequest = new PermissionSubscriber($authorization, $ownership);
 
         $this->expectException(AccessDeniedException::class);
 

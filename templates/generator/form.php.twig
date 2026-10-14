@@ -6,6 +6,7 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Form;
 
 use KejawenLab\Application\Entity\{{ entityHumanize }};
+use KejawenLab\ApiSkeleton\Entity\EntityInterface;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
@@ -15,7 +16,7 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  */
 final class {{ entityHumanize }}Type extends AbstractType
 {
-    public function buildForm(FormBuilderInterface $builder, array $options)
+    public function buildForm(FormBuilderInterface $builder, array $options): void
     {
 {% for i, property in properties %}
 {% if 'id' != property.name %}
@@ -45,7 +46,7 @@ final class {{ entityHumanize }}Type extends AbstractType
 {% endfor %}
     }
 
-    public function configureOptions(OptionsResolver $resolver)
+    public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
             'data_class' => {{ entityHumanize }}::class,

@@ -3,8 +3,63 @@
 >
 > SemartApiSkeleton adalah solusi untuk membangun aplikasi secara super cepat, sangat fleksibel dan luar biasa mudah untuk aplikasi berbasis Admin maupun Api
 > 
-> SemartApiSkeleton menggunakan `swoole` sebagai [PHP Runtime](https://symfony.com/doc/current/components/runtime.html) untuk menjalankan PHP dengan model long pooling sebagaimana NodeJs, Golang atau sejenisnya.
+> SemartApiSkeleton menggunakan runtime standar Symfony. Pada Docker, Nginx melayani HTTP dan aset statis, lalu meneruskan request aplikasi ke PHP-FPM.
 >
+
+## Versi dan Docker
+
+Dependensi telah diperbarui ke Symfony 8.1, DoctrineBundle 3, Doctrine ORM 3.7,
+Auditor 7, Nelmio API Doc 5, Vich Uploader 3, dan PHPUnit 13.
+Image aplikasi memakai PHP 8.4 FPM dengan runtime `SymfonyRuntime`. `symfony/process` tetap
+pada 7.4 karena `ad3n/cron` belum mendukung seri 8. `doctrine/annotations` 2.0.2
+masih dipertahankan untuk parser permission lama; paket tersebut sudah abandoned.
+Versi lengkap dikunci di `composer.lock`.
+
+Docker Compose pengembangan menyediakan Nginx 1.30, PostgreSQL 18, Redis 8,
+RabbitMQ 4, dan Adminer 5. Nginx membuka port 9876; PHP-FPM hanya tersedia
+di jaringan internal pada port 9000. Database dan RabbitMQ memakai volume persisten. Aplikasi menunggu
+healthcheck ketiga layanan sebelum mulai. Startup menjalankan `composer install`
+dari lock file; pembaruan dependensi dilakukan secara eksplisit.
+
+Untuk instalasi baru, siapkan `.env` dan key JWT seperti petunjuk di bawah, lalu:
+
+```bash
+docker compose build --pull app
+docker compose up -d
+docker compose exec app php bin/console doctrine:schema:update --force --no-interaction
+docker compose exec app php bin/console doctrine:fixtures:load --no-interaction
+docker compose restart app
+docker compose ps
+```
+
+Perintah fixtures di atas hanya untuk database baru karena menghapus data lama.
+PostgreSQL sudah membuat database `semart_skeleton` saat pertama dijalankan.
+Jangan mengganti versi mayor PostgreSQL pada volume lama tanpa migrasi database.
+
+Pemeriksaan setelah perubahan:
+
+```bash
+docker compose config --quiet
+docker compose exec app composer validate --strict
+docker compose exec app composer check-platform-reqs
+docker compose exec app composer audit
+docker compose exec app php bin/console lint:container
+docker compose exec app php bin/console doctrine:schema:validate
+docker compose exec app php bin/console nelmio:apidoc:dump --format=json
+docker compose exec app php vendor/bin/phpunit
+docker compose exec app supervisorctl status
+docker compose exec app php tests/smoke.php
+curl --fail http://localhost:9876/health
+```
+
+`docker-compose.prod.yml` adalah konfigurasi standalone untuk layanan database,
+Redis, dan RabbitMQ eksternal: atur alamatnya di `.env` sebelum menjalankan
+`docker compose -f docker-compose.prod.yml up -d --build`. Konfigurasi ini memakai
+`APP_ENV=prod`, `APP_DEBUG=0`, serta `composer install --no-dev`. Jalankan konfigurasi
+pengembangan dan produksi sebagai deployment terpisah agar volume vendor/cache
+dan port tidak bertabrakan. Skema dan fixtures tidak diubah otomatis saat startup.
+Smoke test memakai akun development dari fixtures (`admin`/`admin`), termasuk
+login JWT, sesi admin, dan pemeriksaan akses tanpa autentikasi.
 
 ## Requirement
 
@@ -54,7 +109,7 @@ openssl pkey -in config/jwt/private.pem -out config/jwt/public.pem -pubout
 # Run "composer dump-env prod" to compile .env files for production use (requires symfony/flex >=1.2).
 # https://symfony.com/doc/current/best_practices.html#use-environment-variables-for-infrastructure-configuration
 
-APP_RUNTIME=Runtime\Swoole\Runtime
+APP_RUNTIME=Symfony\Component\Runtime\SymfonyRuntime
 
 ###> symfony/framework-bundle ###
 APP_ENV=dev
@@ -76,8 +131,6 @@ REDIS_URL=redis://session
 
 ###> CUSTOM ###
 NGINX_WEBROOT=/semart/public
-SWOOLE_HOST="0.0.0.0"
-SWOOLE_PORT=9501
 APP_SUPER_ADMIN=SPRADM
 APP_TITLE="Semart Api Skeleton"
 APP_DESCRIPTION="Semart Api Skeleton Application"
@@ -142,7 +195,7 @@ task encrypt -- semart
 ```bash
 docker compose -f docker-compose.yml exec app bash -c "php bin/console cache:clear"
 docker compose -f docker-compose.yml exec app bash -c "chmod 777 -R var"
-docker compose -f docker-compose.yml exec app bash -c "php bin/console doctrine:database:create --no-interaction"
+docker compose -f docker-compose.yml exec app bash -c "php bin/console doctrine:database:create --if-not-exists --no-interaction"
 docker compose -f docker-compose.yml exec app bash -c "php bin/console doctrine:schema:update --force --no-interaction"
 docker compose -f docker-compose.yml exec app bash -c "php bin/console doctrine:fixtures:load --no-interaction"
 docker compose -f docker-compose.yml exec app bash -c "php bin/console assets:install"
@@ -159,7 +212,7 @@ task install
 >
 > * Admin berjalan pada alamat `http://localhost:9876/admin` dengan username `admin` dan password `admin` sama seperti pada Swagger
 >
-> * Adminer berjalan pada alamat `http://localhost:6789` dengan host `db`, username `root` dan password `semart`
+> * Adminer berjalan pada alamat `http://localhost:6789` dengan host `db`, username `semart` dan password `semart`
 >
 
 ## Cara Penggunaan
@@ -340,7 +393,7 @@ Dan jika kamu mengakses halaman Api Documentation maka akan muncul section `Todo
 
 ![Api Doc](doc/assets/api-todo.png)
 
-Sangat mudah sekali bukan? Selanjutnya kamu harus restart dulu docker-nya agar class-class yang tadi digenerate dan didaftarkan sebagai service. Hal ini perlu dilakukan karena kita menggunakan swoole. 
+Setelah generate, bersihkan cache agar service dan route baru tersedia. Pada produksi, restart container aplikasi untuk memuat ulang OPcache.
 
 #### Update translation
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace KejawenLab\ApiSkeleton\Tests\EventSubscriber;
 
-use Doctrine\ORM\Event\LifecycleEventArgs;
+use Doctrine\ORM\Event\PostLoadEventArgs;
 use Doctrine\ORM\Events;
 use KejawenLab\ApiSkeleton\Entity\Media;
 use KejawenLab\ApiSkeleton\EventSubscriber\SetFileUrlSubscriber;
@@ -16,42 +16,28 @@ use Vich\UploaderBundle\Storage\StorageInterface;
  */
 class SetFileUrlSubscriberTest extends TestCase
 {
-    public function testInvalidObject(): void
-    {
-        $event = $this->createMock(LifecycleEventArgs::class);
-        $event->expects($this->once())->method('getObject')->willReturn(new class {});
-
-        $storage = $this->createMock(StorageInterface::class);
-        $subscriber = new SetFileUrlSubscriber($storage);
-
-        $subscriber->postLoad($event);
-    }
-
     public function testValidObject(): void
     {
         $media = new Media();
 
-        $event = $this->createMock(LifecycleEventArgs::class);
-        $event->expects($this->once())->method('getObject')->willReturn($media);
+        $event = $this->createStub(PostLoadEventArgs::class);
 
         $storage = $this->createMock(StorageInterface::class);
         $storage->expects($this->once())->method('resolveUri')->willReturn('/fake/url');
 
         $subscriber = new SetFileUrlSubscriber($storage);
 
-        $subscriber->postLoad($event);
+        $subscriber->postLoad($media, $event);
 
         $this->assertSame($media->getFileUrl(), '/fake/url');
     }
 
-    public function testGetEventClass(): void
+    public function testListenerRegistration(): void
     {
-        $storage = $this->createMock(StorageInterface::class);
-        $subscriber = new SetFileUrlSubscriber($storage);
+        $reflection = new \ReflectionClass(SetFileUrlSubscriber::class);
+        $attributes = $reflection->getAttributes(\Doctrine\Bundle\DoctrineBundle\Attribute\AsEntityListener::class);
 
-        $events = $subscriber->getSubscribedEvents();
-
-        $this->assertCount(1, $events);
-        $this->assertSame(Events::postLoad, $events[0]);
+        $this->assertCount(1, $attributes);
+        $this->assertSame(Events::postLoad, $attributes[0]->newInstance()->event);
     }
 }

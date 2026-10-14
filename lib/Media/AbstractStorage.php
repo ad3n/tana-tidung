@@ -6,7 +6,7 @@ namespace KejawenLab\ApiSkeleton\Media;
 
 use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
-use Vich\UploaderBundle\Mapping\PropertyMapping;
+use Vich\UploaderBundle\Mapping\PropertyMappingInterface;
 use Vich\UploaderBundle\Storage\AbstractStorage as Base;
 
 /**
@@ -29,12 +29,19 @@ abstract class AbstractStorage extends Base
         return \sprintf('%s/%s', $mapping->getUriPrefix(), $uploadDir . $name);
     }
 
+    public function listFiles(PropertyMappingInterface $mapping): iterable
+    {
+        $storage = new \Vich\UploaderBundle\Storage\FileSystemStorage($this->factory);
+
+        yield from $storage->listFiles($mapping);
+    }
+
     private function convertWindowsDirectorySeparator(string $string): string
     {
         return \str_replace('\\', '/', $string);
     }
 
-    protected function doUpload(PropertyMapping $mapping, File $file, ?string $dir, string $name): ?File
+    protected function doUpload(PropertyMappingInterface $mapping, File $file, ?string $dir, string $name): ?File
     {
         $uploadDir = $mapping->getUploadDestination() . \DIRECTORY_SEPARATOR . $dir;
 
@@ -58,7 +65,7 @@ abstract class AbstractStorage extends Base
         return new File($targetPathname);
     }
 
-    protected function doRemove(PropertyMapping $mapping, ?string $dir, string $name): ?bool
+    protected function doRemove(PropertyMappingInterface $mapping, ?string $dir, string $name): ?bool
     {
         $file = $this->doResolvePath($mapping, $dir, $name);
 
@@ -70,7 +77,7 @@ abstract class AbstractStorage extends Base
     }
 
     protected function doResolvePath(
-        PropertyMapping $mapping,
+        PropertyMappingInterface $mapping,
         ?string         $dir,
         string          $name,
         ?bool           $relative = false

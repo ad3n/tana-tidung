@@ -21,3 +21,5 @@ dh_auditor:
                 KejawenLab\ApiSkeleton\Entity\Permission: ~
                 KejawenLab\ApiSkeleton\Entity\Setting: ~
                 KejawenLab\ApiSkeleton\Entity\User: ~
+                KejawenLab\Application\Entity\Level: ~
+                KejawenLab\Application\Entity\Organization: ~

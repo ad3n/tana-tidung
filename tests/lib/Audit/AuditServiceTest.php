@@ -26,15 +26,17 @@ class AuditServiceTest extends TestCase
      */
     public function testGetAudits(): void
     {
-        $reader = $this->createMock(Reader::class);
-        $setting = $this->createMock(SettingService::class);
+        $reader = $this->createStub(Reader::class);
+        $setting = $this->createStub(SettingService::class);
 
-        $entry = $this->createMock(Entry::class);
-        $entry->expects($this->any())->method('getType')->willReturn('INSERT');
-        $entry->expects($this->any())->method('getCreatedAt')->willReturn('2021-04-03');
-        $entry->expects($this->any())->method('getDiffs')->willReturn([]);
+        $entry = Entry::fromArray([
+            'type' => 'INSERT',
+            'diffs' => '{}',
+            'created_at' => new \DateTimeImmutable('2021-04-03'),
+        ]);
 
         $item = $this->createMock(CacheItemInterface::class);
+        $item->method('isHit')->willReturn(true);
         $item->expects($this->once())->method('get')->willReturn(serialize([$entry]));
 
         $cache = $this->createMock(CacheItemPoolInterface::class);
@@ -42,7 +44,7 @@ class AuditServiceTest extends TestCase
 
         $service = new AuditService($reader, $cache, $setting);
 
-        $entity = $this->createMock(EntityInterface::class);
+        $entity = $this->createStub(EntityInterface::class);
 
         $this->assertSame(Audit::class, $service->getAudits($entity, Uuid::uuid4()->toString())::class);
     }

@@ -1,36 +1,20 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-# shellcheck disable=SC2043
-if [[ ! -d "/semart/var" ]]; then
-    cd /semart && mkdir var
-fi
+cd /semart
+mkdir -p var/cache var/log storage /var/log/supervisor
 
-if [[ ! -d "/var/log/supervisor" ]]; then
-    mkdir -p /var/log/supervisor
-fi
-
-if [[ ! -d "/semart/vendor/composer" ]]; then
-    cd /semart && composer update --prefer-dist -vvv
-fi
-
-if [[ "prod" == "${APP_ENV}" ]]; then
+if [[ "${APP_ENV:-dev}" == "prod" ]]; then
     cp "${PHP_INI_DIR}/php.ini-production" "${PHP_INI_DIR}/php.ini"
-    cp "/etc/opcache.ini" "${PHP_INI_DIR}/conf.d/opcache.ini"
-    composer dump-autoload --classmap-authoritative
-    php /semart/bin/console cache:clear --env=prod
+    cp /etc/opcache.ini "${PHP_INI_DIR}/conf.d/opcache.ini"
+    composer install --no-dev --prefer-dist --no-interaction --no-scripts --classmap-authoritative
 else
     cp "${PHP_INI_DIR}/php.ini-development" "${PHP_INI_DIR}/php.ini"
-    composer dump-autoload
-    php /semart/bin/console cache:clear --env=dev
-    chmod 777 -R var/
+    rm -f "${PHP_INI_DIR}/conf.d/opcache.ini"
+    composer install --prefer-dist --no-interaction --no-scripts
 fi
 
-chmod 777 -R var/
-chmod 777 -R storage/
-chmod 755 -R config/
-chmod 755 -R vendor/
-chmod 755 -R public/
-
-/usr/bin/supervisord -n -c /etc/supervisord.conf
-
+chown -R www-data:www-data var storage
+su-exec www-data php bin/console cache:clear
+php bin/console assets:install public
+exec /usr/bin/supervisord -n -c /etc/supervisord.conf

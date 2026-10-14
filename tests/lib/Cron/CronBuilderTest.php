@@ -17,8 +17,8 @@ class CronBuilderTest extends TestCase
 {
     public function testBuild(): void
     {
-        $kernel = $this->createMock(KernelInterface::class);
-        $kernel->expects($this->any())->method('getEnvironment')->willReturn('test');
+        $kernel = $this->createStub(KernelInterface::class);
+        $kernel->method('getEnvironment')->willReturn('test');
 
         $nonSymfony = $this->createMock(CronInterface::class);
         $nonSymfony->expects($this->once())->method('isSymfonyCommand')->willReturn(false);

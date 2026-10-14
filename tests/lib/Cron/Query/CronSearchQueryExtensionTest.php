@@ -24,7 +24,7 @@ class CronSearchQueryExtensionTest extends TestCase
         $request = Request::createFromGlobals();
         $request->query->set('q', 'fake');
 
-        $cron = $this->createMock(CronInterface::class);
+        $cron = $this->createStub(CronInterface::class);
 
         $this->assertSame(false, $queryExtension->support($request::class, $request));
         $this->assertSame(false, $queryExtension->support($cron::class, Request::createFromGlobals()));

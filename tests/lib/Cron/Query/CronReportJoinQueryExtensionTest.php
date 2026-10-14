@@ -22,7 +22,7 @@ class CronReportJoinQueryExtensionTest extends TestCase
     {
         $queryExtension = new CronReportJoinExtension(new AliasHelper());
 
-        $report = $this->createMock(CronReportInterface::class);
+        $report = $this->createStub(CronReportInterface::class);
 
         $this->assertSame(true, $queryExtension->support($report::class, Request::createFromGlobals()));
     }

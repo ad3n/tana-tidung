@@ -20,18 +20,19 @@ class UserProviderTest extends TestCase
 
     public function setUp(): void
     {
-        $this->repository = $this->createMock(ApiClientRepositoryInterface::class);
+        $this->repository = $this->createStub(ApiClientRepositoryInterface::class);
         $this->class = 'App\\Test';
     }
 
     public function testSupport(): void
     {
-        $provider = new UserProvider($this->class, $this->repository);
+        $provider = new UserProvider($this->class, $this->createStub(ApiClientRepositoryInterface::class));
         $this->assertSame(true, $provider->support($this->class));
     }
 
     public function testFindByIdentifier(): void
     {
+        $this->repository = $this->createMock(ApiClientRepositoryInterface::class);
         $secret = 's3cr3t';
 
         $client = new ApiClient();

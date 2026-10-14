@@ -21,17 +21,18 @@ class CronServiceTest extends TestCase
     public function testResolve(): void
     {
         $cron = new Cron();
+        $cron->setSchedule('* * * * *');
 
-        $bus = $this->createMock(MessageBusInterface::class);
+        $bus = $this->createStub(MessageBusInterface::class);
 
         $repository = $this->createMock(CronRepository::class);
-        $repository->expects($this->once())->method('findBy')->withAnyParameters()->willReturn([$cron]);
+        $repository->expects($this->once())->method('findUnRunningCrons')->willReturn([$cron]);
 
         $aliasHelper = new AliasHelper();
 
-        $kernel = $this->createMock(KernelInterface::class);
+        $kernel = $this->createStub(KernelInterface::class);
 
-        $builder = $this->createMock(CronBuilder::class);
+        $builder = $this->createStub(CronBuilder::class);
 
         $service = new CronService($bus, $repository, $aliasHelper, $kernel, $builder);
 

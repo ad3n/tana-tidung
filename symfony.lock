@@ -418,9 +418,6 @@
     "rector/rector-symfony": {
         "version": "0.11.44"
     },
-    "runtime/swoole": {
-        "version": "0.1.1"
-    },
     "sebastian/cli-parser": {
         "version": "1.0.1"
     },
@@ -516,9 +513,6 @@
         "files": [
             "config/packages/stof_doctrine_extensions.yaml"
         ]
-    },
-    "swoole/ide-helper": {
-        "version": "4.7.1"
     },
     "symfony/amqp-messenger": {
         "version": "v5.1.0"

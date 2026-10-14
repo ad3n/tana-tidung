@@ -17,7 +17,7 @@ class AuditExtensionTest extends TestCase
 {
     public function testGetFunctions(): void
     {
-        $reader = $this->createMock(Reader::class);
+        $reader = $this->createStub(Reader::class);
 
         $extension = new AuditExtension($reader);
 

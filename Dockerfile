@@ -1,39 +1,21 @@
-FROM openswoole/swoole:latest-alpine
+FROM php:8.4-fpm-alpine
 
-# Install Dependencies
-RUN apk update
-RUN apk add --no-cache supervisor vim autoconf gcc make g++ inotify-tools bash git
-RUN apk add --no-cache libzip-dev curl-dev icu-dev oniguruma-dev imap-dev postgresql-dev
-RUN apk add --no-cache libpng-dev openssl-dev nghttp2-dev hiredis-dev rabbitmq-c-dev
+RUN apk add --no-cache bash git supervisor su-exec fcgi icu-libs libzip libpq rabbitmq-c oniguruma \
+    && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS icu-dev libzip-dev postgresql-dev rabbitmq-c-dev oniguruma-dev \
+    && docker-php-ext-install -j$(nproc) intl zip bcmath pdo_pgsql pcntl mbstring \
+    && pecl install redis amqp \
+    && docker-php-ext-enable redis amqp \
+    && apk del .build-deps
 
-## Install Pecl Extension
-RUN pecl channel-update pecl.php.net
-RUN pecl install igbinary inotify apcu amqp
-RUN pecl bundle redis && cd redis && phpize && ./configure --enable-redis-igbinary && make && make install
-RUN docker-php-ext-enable igbinary redis inotify amqp apcu
+RUN git config --system --add safe.directory /semart
 
-# Install PHP Core Extensions
-RUN docker-php-ext-install curl intl mbstring zip bcmath imap opcache gd pdo_pgsql pcntl sockets
-RUN docker-php-ext-enable curl intl mbstring zip bcmath imap opcache gd pdo_pgsql pcntl sockets
-
-# Install Composer
-ADD docker/composer.sh /composer.sh
-RUN chmod a+x /composer.sh
-RUN /composer.sh && mv composer.phar /usr/local/bin/composer && chmod a+x /usr/local/bin/composer
-RUN rm -f /composer.sh
-
-# Cleaning
-RUN docker-php-source delete
-RUN rm -r /tmp/* /var/cache/*
-
-# Here we go
-ADD docker/supervisord.conf /etc/supervisord.conf
-ADD docker/start.sh /start.sh
-ADD docker/opcache.ini /etc/opcache.ini
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+COPY docker/supervisord.conf /etc/supervisord.conf
+COPY docker/start.sh /start.sh
+COPY docker/opcache.ini /etc/opcache.ini
+COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/zz-semart.conf
 RUN chmod +x /start.sh
 
 WORKDIR /semart
-
-EXPOSE 9501
-
+EXPOSE 9000
 CMD ["/start.sh"]

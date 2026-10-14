@@ -23,14 +23,14 @@ class ExecutorTest extends TestCase
      */
     public function testStartProcesses(): void
     {
-        $redis = $this->createMock(Redis::class);
+        $redis = $this->createStub(Redis::class);
 
-        $service = $this->createMock(CronService::class);
-        $service->expects($this->any())->method('get');
-        $service->expects($this->any())->method('save');
+        $service = $this->createStub(CronService::class);
+        $service->method('get');
+        $service->method('save');
 
-        $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->any())->method('info');
+        $logger = $this->createStub(LoggerInterface::class);
+        $logger->method('info');
 
         $report = new CronReport();
 

@@ -1,0 +1,7 @@
+.git
+.env
+.env.*.local
+vendor
+var
+storage
+config/jwt/*.pem

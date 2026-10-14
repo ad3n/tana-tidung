@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace KejawenLab\ApiSkeleton\Tests\EventSubscriber;
 
-use Doctrine\ORM\Event\LifecycleEventArgs;
+use Doctrine\ORM\Event\PostLoadEventArgs;
 use Doctrine\ORM\Events;
 use KejawenLab\ApiSkeleton\Entity\Menu;
 use KejawenLab\ApiSkeleton\EventSubscriber\LoadUrlPathSubscriber;
@@ -17,32 +17,20 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  */
 class LoadUrlPathSubscriberTest extends TestCase
 {
-    public function testInvalidObject(): void
-    {
-        $event = $this->createMock(LifecycleEventArgs::class);
-        $event->expects($this->once())->method('getObject')->willReturn(new class {});
-
-        $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
-        $subscriber = new LoadUrlPathSubscriber($urlGenerator);
-
-        $subscriber->postLoad($event);
-    }
-
     public function testIsAdminOnly(): void
     {
         $menu = new Menu();
         $menu->setAdminOnly(true);
         $menu->setRouteName('#');
 
-        $event = $this->createMock(LifecycleEventArgs::class);
-        $event->expects($this->once())->method('getObject')->willReturn($menu);
+        $event = $this->createStub(PostLoadEventArgs::class);
 
         $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
         $urlGenerator->expects($this->never())->method('generate');
 
         $subscriber = new LoadUrlPathSubscriber($urlGenerator);
 
-        $subscriber->postLoad($event);
+        $subscriber->postLoad($menu, $event);
     }
 
     public function testAdminNotFoundRoute(): void
@@ -51,15 +39,14 @@ class LoadUrlPathSubscriberTest extends TestCase
         $menu->setAdminOnly(true);
         $menu->setRouteName('fake_route');
 
-        $event = $this->createMock(LifecycleEventArgs::class);
-        $event->expects($this->once())->method('getObject')->willReturn($menu);
+        $event = $this->createStub(PostLoadEventArgs::class);
 
         $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
         $urlGenerator->expects($this->once())->method('generate')->willThrowException(new RouteNotFoundException());
 
         $subscriber = new LoadUrlPathSubscriber($urlGenerator);
 
-        $subscriber->postLoad($event);
+        $subscriber->postLoad($menu, $event);
         $this->assertSame('#', $menu->getAdminPath());
     }
 
@@ -69,15 +56,14 @@ class LoadUrlPathSubscriberTest extends TestCase
         $menu->setAdminOnly(false);
         $menu->setRouteName('#');
 
-        $event = $this->createMock(LifecycleEventArgs::class);
-        $event->expects($this->once())->method('getObject')->willReturn($menu);
+        $event = $this->createStub(PostLoadEventArgs::class);
 
         $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
         $urlGenerator->expects($this->once())->method('generate')->willThrowException(new RouteNotFoundException());
 
         $subscriber = new LoadUrlPathSubscriber($urlGenerator);
 
-        $subscriber->postLoad($event);
+        $subscriber->postLoad($menu, $event);
         $this->assertSame('#', $menu->getAdminPath());
     }
 
@@ -87,26 +73,23 @@ class LoadUrlPathSubscriberTest extends TestCase
         $menu->setAdminOnly(false);
         $menu->setRouteName('fake_route');
 
-        $event = $this->createMock(LifecycleEventArgs::class);
-        $event->expects($this->once())->method('getObject')->willReturn($menu);
+        $event = $this->createStub(PostLoadEventArgs::class);
 
         $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
         $urlGenerator->expects($this->exactly(2))->method('generate')->willThrowException(new RouteNotFoundException());
 
         $subscriber = new LoadUrlPathSubscriber($urlGenerator);
 
-        $subscriber->postLoad($event);
+        $subscriber->postLoad($menu, $event);
         $this->assertSame('#', $menu->getAdminPath());
     }
 
-    public function testGetEventClass(): void
+    public function testListenerRegistration(): void
     {
-        $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
-        $subscriber = new LoadUrlPathSubscriber($urlGenerator);
+        $reflection = new \ReflectionClass(LoadUrlPathSubscriber::class);
+        $attributes = $reflection->getAttributes(\Doctrine\Bundle\DoctrineBundle\Attribute\AsEntityListener::class);
 
-        $events = $subscriber->getSubscribedEvents();
-
-        $this->assertCount(1, $events);
-        $this->assertSame(Events::postLoad, $events[0]);
+        $this->assertCount(1, $attributes);
+        $this->assertSame(Events::postLoad, $attributes[0]->newInstance()->event);
     }
 }

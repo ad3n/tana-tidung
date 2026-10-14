@@ -26,7 +26,7 @@ class CronReportServiceTest extends TestCase
      */
     public function testCountStale(): void
     {
-        $bus = $this->createMock(MessageBusInterface::class);
+        $bus = $this->createStub(MessageBusInterface::class);
 
         $queryExpr = new Expr();
 
@@ -46,11 +46,11 @@ class CronReportServiceTest extends TestCase
 
     public function testClean(): void
     {
-        $bus = $this->createMock(MessageBusInterface::class);
+        $bus = $this->createStub(MessageBusInterface::class);
 
         $queryExpr = new Expr();
 
-        $query = $this->createMock(Query::class);
+        $query = $this->createStub(Query::class);
 
         $queryBuilder = $this->createMock(QueryBuilder::class);
         $queryBuilder->expects($this->once())->method('delete')->willReturn($queryBuilder);
