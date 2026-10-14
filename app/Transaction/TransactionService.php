@@ -1,0 +1,449 @@
+<?php
+
+declare(strict_types=1);
+
+namespace KejawenLab\Application\Transaction;
+
+use Brick\Math\BigDecimal;
+use Doctrine\ORM\EntityManagerInterface;
+use KejawenLab\Application\Entity\{Transaction, TransactionItem, TransactionItemAllocation, StockLot, StockMovement, Item, Unit, ItemUnitConversion, Organization, Source, FiscalYear};
+use KejawenLab\Application\Transaction\Enum\{TransactionType as Type, TransactionStatus as Status};
+use Symfony\Component\HttpKernel\Exception\{AccessDeniedHttpException, BadRequestHttpException, ConflictHttpException, NotFoundHttpException};
+use Ramsey\Uuid\Uuid;
+
+final class TransactionService
+{
+    public function __construct(private EntityManagerInterface $em, public readonly TransactionAccess $access)
+    {
+    }
+
+    public function get(string $id): Transaction
+    {
+        $this->access->requirePermission('view');
+        $transaction = $this->reference(Transaction::class, $id);
+        if (!$this->access->canView($transaction)) {
+            throw new NotFoundHttpException();
+        }
+        return $transaction;
+    }
+
+    public function listing(int $page = 1, string $search = '', ?Type $type = null): array
+    {
+        $this->access->requirePermission('view');
+        $query = $this->em->createQueryBuilder()->select('t')->from(Transaction::class, 't');
+        if ($org = $this->access->organization()) {
+            $query->andWhere('t.fromOrganization = :org OR t.toOrganization = :org')->setParameter('org', $org);
+        }
+        if ($type !== null) {
+            $query->andWhere('t.type = :type')->setParameter('type', $type->value);
+        }
+        if ($search !== '') {
+            $query->andWhere('LOWER(t.code) LIKE :q OR LOWER(t.referenceNumber) LIKE :q')->setParameter('q', '%' . mb_strtolower($search) . '%');
+        }
+        $total = (clone $query)->select('COUNT(t.id)')->getQuery()->getSingleScalarResult();
+        $rows = $query->orderBy('t.createdAt', 'DESC')->addOrderBy('t.id', 'DESC')->setFirstResult((max(1, $page) - 1) * 25)->setMaxResults(25)->getQuery()->getResult();
+        return ['items' => $rows, 'total' => (int) $total, 'page' => max(1, $page)];
+    }
+
+    public function lines(Transaction $transaction): array
+    {
+        return $this->em->getRepository(TransactionItem::class)->findBy(['transaction' => $transaction], ['id' => 'ASC']);
+    }
+
+    public function saveDraft(array $input, ?string $id = null): Transaction
+    {
+        $this->access->requirePermission($id ? 'edit' : 'add');
+        return $this->locked(function () use ($input, $id): Transaction {
+            $this->keys($input, ['type', 'date', 'from_organization_id', 'to_organization_id', 'source_id', 'reference_number', 'notes']);
+            $transaction = $id ? $this->get($id) : new Transaction();
+            if ($id) {
+                $this->em->refresh($transaction);
+                $this->draftOwner($transaction);
+            }
+            $typeValue = $this->text($input, 'type');
+            $type = ctype_digit($typeValue) ? Type::tryFrom((int) $typeValue) : null;
+            if (!$type) {
+                throw new BadRequestHttpException('Jenis transaksi tidak valid.');
+            }
+            if ($id && $transaction->getType() !== $type) {
+                throw new ConflictHttpException('Jenis transaksi tidak dapat diubah. Buat draft baru.');
+            }
+            $year = $id ? $transaction->getFiscalYear() : $this->em->getRepository(FiscalYear::class)->findOneBy(['status' => true]);
+            if (!$year || !$year->getStatus()) {
+                throw new ConflictHttpException('Transaksi harus menggunakan tahun anggaran aktif.');
+            }
+            $date = $this->date($this->text($input, 'date'));
+            if ((int) $date->format('Y') !== $year->getYear()) {
+                throw new BadRequestHttpException('Tanggal harus berada dalam tahun anggaran aktif.');
+            }
+            $own = $this->access->organization();
+            $fromId = $this->text($input, 'from_organization_id');
+            $toId = $this->text($input, 'to_organization_id');
+            if ($own) {
+                $ownerId = $type === Type::RECEIPT ? $toId : $fromId;
+                if ($ownerId !== '' && $ownerId !== $own->getId()) {
+                    throw new AccessDeniedHttpException('SKPD/OPD harus sesuai dengan pengguna login.');
+                }
+                if ($type === Type::RECEIPT) { $toId = $own->getId(); } else { $fromId = $own->getId(); }
+            }
+            $from = $type === Type::RECEIPT ? null : $this->reference(Organization::class, $fromId);
+            $to = $type === Type::DISPOSAL ? null : $this->reference(Organization::class, $toId);
+            if (($type === Type::RECEIPT && $fromId !== '') || ($type === Type::DISPOSAL && $toId !== '')) {
+                throw new BadRequestHttpException('SKPD/OPD asal atau tujuan tidak sesuai jenis transaksi.');
+            }
+            if ($from && $to && $from->getId() === $to->getId()) {
+                throw new BadRequestHttpException('SKPD/OPD asal dan tujuan harus berbeda.');
+            }
+            if ($id && $transaction->getFromOrganization()?->getId() !== $from?->getId() && $this->lines($transaction)) {
+                throw new ConflictHttpException('Hapus detail barang sebelum mengubah SKPD/OPD asal.');
+            }
+            $notes = $this->text($input, 'notes');
+            if ($type === Type::DISPOSAL && $notes === '') {
+                throw new BadRequestHttpException('Catatan wajib diisi untuk pengeluaran akhir.');
+            }
+            $reference = $this->text($input, 'reference_number');
+            if ($reference === '') {
+                throw new BadRequestHttpException('Nomor Referensi wajib diisi.');
+            }
+            if (mb_strlen($reference) > 255 || mb_strlen($notes) > 10000) {
+                throw new BadRequestHttpException('Nomor referensi maksimal 255 karakter dan catatan maksimal 10000 karakter.');
+            }
+            $sourceId = $this->text($input, 'source_id');
+            if ($type !== Type::RECEIPT && $sourceId !== '') {
+                throw new BadRequestHttpException('Sumber barang hanya untuk penerimaan eksternal.');
+            }
+            $transaction->setType($type);
+            $transaction->setDate($date);
+            $transaction->setFiscalYear($year);
+            $transaction->setFromOrganization($from);
+            $transaction->setToOrganization($to);
+            $transaction->setSource($type === Type::RECEIPT ? $this->reference(Source::class, $sourceId) : null);
+            $transaction->setReferenceNumber($reference);
+            $transaction->setNotes($notes ?: null);
+            if (!$id) {
+                $owner = $type === Type::RECEIPT ? $to : $from;
+                $transaction->setCode($this->generateCode($year, $owner, $date));
+                $transaction->setCreatedBy($this->access->account());
+                $transaction->setCreatedAt(new \DateTimeImmutable());
+                $this->em->persist($transaction);
+            }
+            return $transaction;
+        });
+    }
+
+    public function createDraftWithLines(array $header, array $lines): Transaction
+    {
+        if (count($lines) > 100) { throw new BadRequestHttpException('Maksimal 100 detail barang per transaksi.'); }
+        return $this->locked(function () use ($header, $lines): Transaction {
+            $transaction = $this->saveDraft($header);
+            foreach ($lines as $line) {
+                if (!is_array($line)) { throw new BadRequestHttpException('Format detail barang tidak valid.'); }
+                $this->addLine($transaction->getId(), $line);
+            }
+            return $transaction;
+        });
+    }
+
+    public function addLine(string $id, array $input): void
+    {
+        $this->access->requirePermission('edit');
+        $this->locked(function () use ($id, $input): void {
+            $this->keys($input, ['item_id', 'unit_id', 'qty', 'batch_number', 'expiry_date', 'stock_lot_id']);
+            $transaction = $this->get($id);
+            $this->em->refresh($transaction);
+            $this->draftOwner($transaction);
+            $item = $this->reference(Item::class, $this->text($input, 'item_id'));
+            $unit = $this->reference(Unit::class, $this->text($input, 'unit_id'));
+            if (!$item->getUnit() || !in_array($item->getUnit()->getType(), Unit::TYPES, true)) {
+                throw new BadRequestHttpException('Lengkapi satuan dasar dan jenis satuan barang terlebih dahulu.');
+            }
+            $qty = $this->decimal($this->text($input, 'qty'));
+            $factor = '1';
+            if ($unit->getId() !== $item->getUnit()->getId()) {
+                $conversion = $this->em->getRepository(ItemUnitConversion::class)->findOneBy(['item' => $item, 'unit' => $unit]);
+                if (!$conversion || ($unit->getType() !== 'package' && $unit->getType() !== $item->getUnit()->getType())) {
+                    throw new BadRequestHttpException('Satuan konversi tidak terdaftar atau jenis satuannya tidak sesuai.');
+                }
+                $factor = $conversion->getFactor();
+            }
+            try {
+                $baseQty = (string) BigDecimal::of($qty)->multipliedBy($factor)->toScale(6);
+                $this->decimal($baseQty);
+            } catch (\Brick\Math\Exception\MathException) {
+                throw new BadRequestHttpException('Hasil konversi melebihi ketelitian 6 desimal.');
+            }
+            $line = new TransactionItem();
+            $line->setTransaction($transaction);
+            $line->setItem($item);
+            $line->setUnit($unit);
+            $line->setQty($qty);
+            $line->setConversionFactor($factor);
+            $line->setBaseUnit($item->getUnit());
+            $line->setBaseQty($baseQty);
+            $expiry = $this->text($input, 'expiry_date');
+            $batch = $this->text($input, 'batch_number');
+            $lotId = $this->text($input, 'stock_lot_id');
+            if ($transaction->getType() === Type::RECEIPT) {
+                if ($lotId !== '') { throw new BadRequestHttpException('Penerimaan membuat batch baru.'); }
+                if (mb_strlen($batch) > 100) { throw new BadRequestHttpException('Nomor batch maksimal 100 karakter.'); }
+                if ($item->getStatus() && $expiry === '') { throw new BadRequestHttpException('Tanggal kedaluwarsa wajib untuk barang ini.'); }
+                if (!$item->getStatus() && $expiry !== '') { throw new BadRequestHttpException('Barang ini tidak memiliki tanggal kedaluwarsa.'); }
+                $line->setExpiryDate($expiry === '' ? null : $this->date($expiry));
+                if ($line->getExpiryDate() && $line->getExpiryDate() < $transaction->getDate()) { throw new BadRequestHttpException('Tanggal kedaluwarsa tidak boleh sebelum penerimaan.'); }
+                $line->setBatchNumber($batch ?: null);
+            } else {
+                if ($expiry !== '' || $batch !== '') { throw new BadRequestHttpException('Batch dan kedaluwarsa mengikuti stok yang sudah diterima.'); }
+                if ($lotId !== '') {
+                    $lot = $this->reference(StockLot::class, $lotId);
+                    if ($lot->getItem()->getId() !== $item->getId() || !$this->availableLots($transaction, $item, $lotId)) {
+                        throw new BadRequestHttpException('Batch tidak tersedia untuk barang dan SKPD/OPD asal ini.');
+                    }
+                    $line->setSelectedLot($lot);
+                }
+            }
+            $this->em->persist($line);
+        });
+    }
+
+    public function removeLine(string $id, string $lineId): void
+    {
+        $this->access->requirePermission('edit');
+        $this->locked(function () use ($id, $lineId): void {
+            $transaction = $this->get($id);
+            $this->em->refresh($transaction);
+            $this->draftOwner($transaction);
+            $line = $this->reference(TransactionItem::class, $lineId);
+            if ($line->getTransaction()->getId() !== $id) { throw new NotFoundHttpException(); }
+            $this->em->remove($line);
+        });
+    }
+
+    public function transition(string $id, string $action): void
+    {
+        $this->access->requirePermission($action === 'cancel' ? 'delete' : 'edit');
+        $this->locked(function () use ($id, $action): void {
+            $transaction = $this->get($id);
+            $this->em->refresh($transaction);
+            if (!$this->access->canOperate($transaction, $action === 'receive')) { throw new AccessDeniedHttpException(); }
+            $status = $transaction->getStatus();
+            if ($action === 'cancel') {
+                if ($status !== Status::DRAFT) { throw new ConflictHttpException('Hanya draft yang dapat dibatalkan.'); }
+                $transaction->setStatus(Status::CANCELLED);
+                $transaction->setCancelledAt(new \DateTimeImmutable());
+                $transaction->setCancelledBy($this->access->account());
+                return;
+            }
+            if ($action === 'receive') {
+                if ($transaction->getType() !== Type::TRANSFER || $status !== Status::SENT) { throw new ConflictHttpException('Hanya transfer Dikirim yang dapat diterima.'); }
+                foreach ($this->lines($transaction) as $line) {
+                    foreach ($this->em->getRepository(TransactionItemAllocation::class)->findBy(['transactionItem' => $line]) as $allocation) {
+                        $this->movement($allocation, $transaction->getFromOrganization(), 'IN_TRANSIT', 'receive', '-' . $allocation->getBaseQty());
+                        $this->movement($allocation, $transaction->getToOrganization(), 'AVAILABLE', 'receive', $allocation->getBaseQty());
+                    }
+                }
+                $transaction->setStatus(Status::COMPLETED);
+                $transaction->setReceivedBy($this->access->account());
+                $transaction->setReceivedAt(new \DateTimeImmutable());
+                return;
+            }
+            if ($status !== Status::DRAFT || !in_array($action, ['post', 'send'], true) || (($transaction->getType() === Type::TRANSFER) !== ($action === 'send'))) {
+                throw new ConflictHttpException('Perpindahan status tidak diperbolehkan.');
+            }
+            $this->em->refresh($transaction->getFiscalYear());
+            if (trim((string) $transaction->getReferenceNumber()) === '') {
+                throw new BadRequestHttpException('Nomor Referensi wajib diisi.');
+            }
+            if (!$transaction->getFiscalYear()->getStatus()) { throw new ConflictHttpException('Tahun anggaran transaksi tidak aktif.'); }
+            if ($transaction->getType() === Type::DISPOSAL && trim((string) $transaction->getNotes()) === '') { throw new BadRequestHttpException('Catatan pengeluaran wajib diisi.'); }
+            foreach ([$transaction->getFromOrganization(), $transaction->getToOrganization(), $transaction->getSource()] as $reference) {
+                if ($reference && $reference->getDeletedAt() !== null) {
+                    throw new ConflictHttpException('SKPD/OPD atau sumber barang sudah dihapus.');
+                }
+            }
+            $lines = $this->lines($transaction);
+            if (!$lines) { throw new BadRequestHttpException('Tambahkan minimal satu barang sebelum memproses transaksi.'); }
+            foreach ($lines as $line) {
+                if ($line->getItem()->getDeletedAt() !== null || $line->getBaseUnit()->getDeletedAt() !== null) { throw new ConflictHttpException('Barang atau satuan sudah dihapus.'); }
+                if ($transaction->getType() === Type::RECEIPT) {
+                    if (($line->getItem()->getStatus() && !$line->getExpiryDate()) || ($line->getExpiryDate() && $line->getExpiryDate() < $transaction->getDate())) {
+                        throw new ConflictHttpException('Periksa tanggal kedaluwarsa detail barang sebelum menyelesaikan penerimaan.');
+                    }
+                    $lot = new StockLot();
+                    $lot->setItem($line->getItem());
+                    $lot->setReceiptItem($line);
+                    $batch = trim((string) $line->getBatchNumber());
+                    if ($batch === '') { $batch = $this->generateBatchNumber($transaction->getDate()); }
+                    $line->setBatchNumber($batch);
+                    $lot->setBatchNumber($batch);
+                    $lot->setExpiryDate($line->getExpiryDate());
+                    $this->em->persist($lot);
+                    $allocation = $this->allocation($line, $lot, $line->getBaseQty());
+                    $this->movement($allocation, $transaction->getToOrganization(), 'AVAILABLE', 'post', $line->getBaseQty());
+                } else {
+                    $remaining = BigDecimal::of($line->getBaseQty());
+                    foreach ($this->availableLots($transaction, $line->getItem(), $line->getSelectedLot()?->getId()) as $stock) {
+                        $amount = $remaining->isLessThan($stock['qty']) ? $remaining : BigDecimal::of($stock['qty']);
+                        $allocation = $this->allocation($line, $this->reference(StockLot::class, $stock['id']), (string) $amount);
+                        $this->movement($allocation, $transaction->getFromOrganization(), 'AVAILABLE', 'post', (string) $amount->negated());
+                        if ($transaction->getType() === Type::TRANSFER) {
+                            $this->movement($allocation, $transaction->getFromOrganization(), 'IN_TRANSIT', 'post', (string) $amount);
+                        }
+                        $remaining = $remaining->minus($amount);
+                        if ($remaining->isZero()) { break; }
+                    }
+                    if (!$remaining->isZero()) { throw new ConflictHttpException('Stok tersedia tidak mencukupi, atau batch sudah kedaluwarsa untuk transfer.'); }
+                }
+                // Make allocations visible to the next line in the same atomic posting.
+                $this->em->flush();
+            }
+            $transaction->setStatus($action === 'send' ? Status::SENT : Status::COMPLETED);
+            $transaction->setPostedBy($this->access->account());
+            $transaction->setPostedAt(new \DateTimeImmutable());
+        });
+    }
+
+    private function allocation(TransactionItem $line, StockLot $lot, string $qty): TransactionItemAllocation
+    {
+        $allocation = new TransactionItemAllocation();
+        $allocation->setTransactionItem($line);
+        $allocation->setStockLot($lot);
+        $allocation->setBaseQty($qty);
+        $this->em->persist($allocation);
+        return $allocation;
+    }
+
+    private function movement(TransactionItemAllocation $allocation, Organization $organization, string $location, string $phase, string $qty): void
+    {
+        $movement = new StockMovement();
+        $movement->setAllocation($allocation);
+        $movement->setOrganization($organization);
+        $movement->setStockLot($allocation->getStockLot());
+        $movement->setLocation($location);
+        $movement->setPhase($phase);
+        $movement->setQuantityDelta($qty);
+        $movement->setPostedAt(new \DateTimeImmutable());
+        $this->em->persist($movement);
+    }
+
+    private function availableLots(Transaction $transaction, Item $item, ?string $lotId): array
+    {
+        $sql = "SELECT l.id, SUM(m.quantity_delta) AS qty FROM stock_movements m JOIN stock_lots l ON l.id=m.stock_lot_id WHERE m.organization_id=:org AND l.item_id=:item AND m.location='AVAILABLE'";
+        $params = ['org' => $transaction->getFromOrganization()->getId(), 'item' => $item->getId()];
+        if ($lotId) { $sql .= ' AND l.id=:lot'; $params['lot'] = $lotId; }
+        if ($transaction->getType() === Type::TRANSFER) {
+            $sql .= ' AND (l.expiry_date IS NULL OR l.expiry_date >= :today)';
+            $params['today'] = max((new \DateTimeImmutable('today'))->format('Y-m-d'), $transaction->getDate()->format('Y-m-d'));
+        }
+        $sql .= ' GROUP BY l.id, l.expiry_date HAVING SUM(m.quantity_delta)>0 ORDER BY l.expiry_date ASC NULLS LAST, l.id';
+        return $this->em->getConnection()->fetchAllAssociative($sql, $params);
+    }
+
+    public function stocks(?string $organizationId = null): array
+    {
+        $this->access->requirePermission('view');
+        $org = $this->access->organization();
+        if ($org && $organizationId && $organizationId !== $org->getId()) { throw new AccessDeniedHttpException(); }
+        $organizationId = $org?->getId() ?? $organizationId;
+        if ($organizationId) { $this->reference(Organization::class, $organizationId); }
+        $sql = "SELECT o.id AS organization_id, o.name AS organization, i.id AS item_id, i.name AS item, u.name AS unit, l.id AS stock_lot_id, l.batch_number, l.expiry_date, m.location, SUM(m.quantity_delta) AS qty FROM stock_movements m JOIN stock_lots l ON l.id=m.stock_lot_id JOIN items i ON i.id=l.item_id JOIN transaction_items ti ON ti.id=l.receipt_item_id JOIN units u ON u.id=ti.base_unit_id JOIN organizations o ON o.id=m.organization_id";
+        $params = [];
+        if ($organizationId) { $sql .= ' WHERE o.id=:org'; $params['org'] = $organizationId; }
+        return $this->em->getConnection()->fetchAllAssociative($sql . ' GROUP BY o.id, i.id, u.name, l.id, m.location HAVING SUM(m.quantity_delta)<>0 ORDER BY o.name, i.name, l.expiry_date', $params);
+    }
+
+    public function choices(): array
+    {
+        $this->access->requirePermission('view');
+        return [
+            'organizations' => $this->em->getRepository(Organization::class)->findBy([], ['name' => 'ASC']),
+            'sources' => $this->em->getRepository(Source::class)->findBy([], ['name' => 'ASC']),
+            'items' => $this->em->getRepository(Item::class)->findBy([], ['name' => 'ASC']),
+            'units' => $this->em->getRepository(Unit::class)->findBy([], ['name' => 'ASC']),
+            'conversions' => $this->em->getRepository(ItemUnitConversion::class)->findAll(),
+            'own_organization' => $this->access->organization(),
+            'active_year' => $this->em->getRepository(FiscalYear::class)->findOneBy(['status' => true]),
+        ];
+    }
+
+    private function generateBatchNumber(\DateTimeImmutable $date): string
+    {
+        for ($attempt = 0; $attempt < 100; ++$attempt) {
+            $number = 'BATCH' . $date->format('Ymd') . random_int(10000, 99999);
+            if (!$this->em->getRepository(StockLot::class)->findOneBy(['batchNumber' => $number])) {
+                return $number;
+            }
+        }
+        throw new ConflictHttpException('Nomor batch unik belum tersedia. Silakan coba kembali.');
+    }
+
+    private function generateCode(FiscalYear $year, Organization $organization, \DateTimeImmutable $date): string
+    {
+        $prefix = 'TRX' . $year->getYear() . $organization->getCode() . $date->format('Ymd');
+        for ($attempt = 0; $attempt < 100; ++$attempt) {
+            $code = $prefix . random_int(10000, 99999);
+            if (!$this->em->getRepository(Transaction::class)->findOneBy(['code' => $code])) {
+                return $code;
+            }
+        }
+        throw new ConflictHttpException('Nomor transaksi unik belum tersedia. Silakan coba kembali.');
+    }
+
+    private function draftOwner(Transaction $transaction): void
+    {
+        if ($transaction->getStatus() !== Status::DRAFT) { throw new ConflictHttpException('Hanya draft yang dapat diubah.'); }
+        if (!$this->access->canOperate($transaction)) { throw new AccessDeniedHttpException(); }
+    }
+
+    private function reference(string $class, string $id): object
+    {
+        if (!Uuid::isValid($id) || !$entity = $this->em->find($class, $id)) { throw new BadRequestHttpException('Referensi data tidak ditemukan.'); }
+        if (method_exists($entity, 'getDeletedAt') && $entity->getDeletedAt() !== null) { throw new BadRequestHttpException('Referensi data sudah dihapus.'); }
+        return $entity;
+    }
+
+    private function text(array $input, string $key): string
+    {
+        $value = $input[$key] ?? '';
+        if (!is_string($value) && !is_int($value)) { throw new BadRequestHttpException('Format ' . $key . ' tidak valid.'); }
+        return trim((string) $value);
+    }
+
+    private function keys(array $input, array $allowed): void
+    {
+        if (array_diff(array_keys($input), $allowed)) { throw new BadRequestHttpException('Field transaksi tidak dikenal atau tidak boleh diubah langsung.'); }
+    }
+
+    private function date(string $value): \DateTimeImmutable
+    {
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        if (!$date || $date->format('Y-m-d') !== $value) { throw new BadRequestHttpException('Tanggal tidak valid. Gunakan YYYY-MM-DD.'); }
+        return $date;
+    }
+
+    private function decimal(string $value): string
+    {
+        if (!preg_match('/^\d{1,18}(\.\d{1,6})?$/D', $value) || !BigDecimal::of($value)->isPositive()) {
+            throw new BadRequestHttpException('Jumlah harus positif, maksimal 18 digit dan 6 angka desimal.');
+        }
+        return (string) BigDecimal::of($value)->toScale(6);
+    }
+
+    private function locked(callable $operation): mixed
+    {
+        $db = $this->em->getConnection();
+        $db->beginTransaction();
+        try {
+            // Serialize stock writers and draft actions to prevent double posting and overselling.
+            $db->executeQuery('SELECT pg_advisory_xact_lock(74261015)');
+            $db->executeQuery('SELECT pg_advisory_xact_lock(74261014)');
+            $result = $operation();
+            $this->em->flush();
+            $db->commit();
+            return $result;
+        } catch (\Throwable $error) {
+            $db->rollBack();
+            $this->em->clear();
+            throw $error;
+        }
+    }
+}

@@ -1,0 +1,101 @@
+<?php
+
+declare(strict_types=1);
+
+namespace KejawenLab\Application\Command;
+
+use Doctrine\ORM\EntityManagerInterface;
+use KejawenLab\ApiSkeleton\Entity\{Menu, Group, Permission};
+use KejawenLab\Application\Admin\Controller\Transaction\Main;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+
+#[AsCommand(name: 'app:transactions:install', description: 'Install transaction menu, permissions and database constraints without reloading fixtures.')]
+final class InstallTransactions extends Command
+{
+    public function __construct(private EntityManagerInterface $em, #[Autowire(env: 'APP_SUPER_ADMIN')] private string $superAdmin)
+    {
+        parent::__construct();
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $this->em->wrapInTransaction(function (): void {
+            $checks = [
+                'transactions' => [
+                    'transaction_type_valid' => 'type IN (1,2,3)',
+                    'transaction_status_valid' => 'status IN (1,2,3,4) AND (status <> 2 OR type = 2)',
+                    'transaction_organizations_valid' => '(type = 1 AND from_organization_id IS NULL AND to_organization_id IS NOT NULL AND source_id IS NOT NULL) OR (type = 2 AND from_organization_id IS NOT NULL AND to_organization_id IS NOT NULL AND from_organization_id <> to_organization_id AND source_id IS NULL) OR (type = 3 AND from_organization_id IS NOT NULL AND to_organization_id IS NULL AND source_id IS NULL AND notes IS NOT NULL AND LENGTH(TRIM(notes)) > 0)',
+                ],
+                'transaction_items' => ['transaction_quantities_positive' => 'qty > 0 AND conversion_factor > 0 AND base_qty > 0 AND base_qty = qty * conversion_factor'],
+                'transaction_item_allocations' => ['allocation_quantity_positive' => 'base_qty > 0'],
+                'stock_movements' => ['movement_valid' => "quantity_delta <> 0 AND location IN ('AVAILABLE','IN_TRANSIT') AND phase IN ('post','receive')"],
+            ];
+            foreach ($checks as $table => $constraints) {
+                foreach ($constraints as $name => $expression) {
+                    if (!$this->em->getConnection()->fetchOne('SELECT 1 FROM pg_constraint WHERE conname = ?', [$name])) {
+                        $this->em->getConnection()->executeStatement("ALTER TABLE $table ADD CONSTRAINT $name CHECK ($expression)");
+                    }
+                }
+            }
+            $menu = $this->em->getRepository(Menu::class)->findOneBy(['code' => 'TRANSACTION']);
+            if (!$menu) {
+                $menu = new Menu();
+                $menu->setCode('TRANSACTION');
+                $menu->setName('Transaksi');
+                $menu->setSortOrder(3);
+                $menu->setIconClass('cil-swap-horizontal');
+                $menu->setRouteName('#');
+                $this->em->persist($menu);
+            }
+            $menu->setRouteName('#');
+            $children = [];
+            foreach (['receipt' => 'Penerimaan', 'transfer' => 'Transfer', 'disposal' => 'Pengeluaran'] as $key => $name) {
+                $code = 'TRANSACTION_' . strtoupper($key);
+                $child = $this->em->getRepository(Menu::class)->findOneBy(['code' => $code]);
+                if (!$child) {
+                    $child = new Menu();
+                    $child->setCode($code);
+                    $this->em->persist($child);
+                }
+                $child->setParent($menu);
+                $child->setName($name);
+                $child->setSortOrder(count($children));
+                $child->setAdminOnly(true);
+                $child->setRouteName(Main::class . '_' . $key);
+                $children[] = $child;
+            }
+            foreach ($this->em->getRepository(Group::class)->findAll() as $group) {
+                $permission = $this->em->getRepository(Permission::class)->findOneBy(['group' => $group, 'menu' => $menu]);
+                if (!$permission) {
+                    $permission = new Permission();
+                    $permission->setGroup($group);
+                    $permission->setMenu($menu);
+                    $allowed = strtoupper((string) $group->getCode()) === strtoupper($this->superAdmin);
+                    $permission->setViewable($allowed);
+                    $permission->setAddable($allowed);
+                    $permission->setEditable($allowed);
+                    $permission->setDeletable($allowed);
+                    $this->em->persist($permission);
+                }
+                foreach ($children as $child) {
+                    if ($this->em->getRepository(Permission::class)->findOneBy(['group' => $group, 'menu' => $child])) { continue; }
+                    $childPermission = new Permission();
+                    $childPermission->setGroup($group);
+                    $childPermission->setMenu($child);
+                    $childPermission->setViewable($permission->isViewable());
+                    $childPermission->setAddable($permission->isAddable());
+                    $childPermission->setEditable($permission->isEditable());
+                    $childPermission->setDeletable($permission->isDeletable());
+                    $this->em->persist($childPermission);
+                }
+            }
+        });
+        $this->em->getConfiguration()->getResultCache()?->clear();
+        $output->writeln('Transaction menu and constraints installed. Configure non-admin groups through Group permissions.');
+        return Command::SUCCESS;
+    }
+}

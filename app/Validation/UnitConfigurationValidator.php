@@ -35,6 +35,9 @@ class UnitConfigurationValidator extends ConstraintValidator
                 $this->context->buildViolation('Tentukan jenis satuan pada master Satuan terlebih dahulu.')->atPath('unit')->addViolation();
             }
             $original = $this->em->getUnitOfWork()->getOriginalEntityData($value);
+            if (isset($original['unit']) && $original['unit'] !== $value->getUnit() && $this->em->getRepository(\KejawenLab\Application\Entity\TransactionItem::class)->count(['item' => $value]) > 0) {
+                $this->context->buildViolation('Satuan dasar tidak dapat diubah setelah barang memiliki transaksi.')->atPath('unit')->addViolation();
+            }
             if (isset($original['unit']) && $original['unit'] !== $value->getUnit() && $this->em->getRepository(ItemUnitConversion::class)->count(['item' => $value]) > 0) {
                 $this->context->buildViolation('Hapus konversi barang terlebih dahulu sebelum mengganti satuan dasar.')->atPath('unit')->addViolation();
             }

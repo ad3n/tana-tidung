@@ -15,7 +15,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
  */
 final class UnitService extends AbstractService implements ServiceInterface
 {
-    public function __construct(MessageBusInterface $messageBus, UnitRepositoryInterface $repository, AliasHelper $aliasHelper, private \Doctrine\ORM\EntityManagerInterface $em)
+    public function __construct(MessageBusInterface $messageBus, UnitRepositoryInterface $repository, AliasHelper $aliasHelper, private \Doctrine\ORM\EntityManagerInterface $em, private \KejawenLab\Application\Transaction\TransactionReferenceGuard $transactionGuard)
     {
         parent::__construct($messageBus, $repository, $aliasHelper);
     }
@@ -29,6 +29,6 @@ final class UnitService extends AbstractService implements ServiceInterface
         if ((int) $used > 0) {
             throw new \Symfony\Component\HttpKernel\Exception\ConflictHttpException('Satuan masih digunakan oleh barang atau konversi.');
         }
-        parent::remove($object);
+        $this->transactionGuard->remove($object, fn () => parent::remove($object));
     }
 }

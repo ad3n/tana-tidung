@@ -32,7 +32,12 @@ final class Delete extends AbstractController
             return new RedirectResponse($this->generateUrl(Main::class));
         }
 
-        $this->service->remove($source);
+        try {
+            $this->service->remove($source);
+        } catch (\Symfony\Component\HttpKernel\Exception\ConflictHttpException $error) {
+            $this->addFlash('error', $error->getMessage());
+            return new RedirectResponse($this->generateUrl(Main::class));
+        }
 
         $this->addFlash('info', 'sas.page.source.deleted');
 

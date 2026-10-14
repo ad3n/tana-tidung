@@ -1,0 +1,24 @@
+/* Symfony form themes mark required labels and compound-field legends. */
+label.required::after,
+legend.required::after {
+    content: " *";
+    color: #dc3545;
+    font-weight: 700;
+}
+
+/* Handwritten forms, including requirements changed dynamically by JavaScript. */
+.form-group:has(input[required], select[required], textarea[required]) > label::after,
+label:has(input[required], select[required], textarea[required])::after {
+    content: " *";
+    color: #dc3545;
+    font-weight: 700;
+}
+
+#semartLogin > label {
+    display: block;
+    width: 85%;
+    margin: 10px auto 0;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 600;
+}

@@ -15,8 +15,12 @@ use Symfony\Component\Messenger\MessageBusInterface;
  */
 final class OrganizationService extends AbstractService implements ServiceInterface
 {
-    public function __construct(MessageBusInterface $messageBus, OrganizationRepositoryInterface $repository, AliasHelper $aliasHelper)
+    public function __construct(MessageBusInterface $messageBus, OrganizationRepositoryInterface $repository, AliasHelper $aliasHelper, private \KejawenLab\Application\Transaction\TransactionReferenceGuard $transactionGuard)
     {
         parent::__construct($messageBus, $repository, $aliasHelper);
+    }
+    public function remove(\KejawenLab\ApiSkeleton\Entity\EntityInterface $object): void
+    {
+        $this->transactionGuard->remove($object, fn () => parent::remove($object));
     }
 }

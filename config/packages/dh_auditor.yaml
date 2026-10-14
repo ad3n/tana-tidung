@@ -29,3 +29,8 @@ dh_auditor:
                 KejawenLab\Application\Entity\FiscalYear: ~
                 KejawenLab\Application\Entity\Category: ~
                 KejawenLab\Application\Entity\Item: ~
+                KejawenLab\Application\Entity\Transaction: ~
+                KejawenLab\Application\Entity\TransactionItem: ~
+                KejawenLab\Application\Entity\StockLot: ~
+                KejawenLab\Application\Entity\TransactionItemAllocation: ~
+                KejawenLab\Application\Entity\StockMovement: ~

@@ -1,0 +1,20 @@
+{% trans_default_domain 'pages' %}
+    <div class="card-body">
+        <p>{{ 'transaction.fiscal_year'|trans }}: <strong>{{ transaction ? transaction.fiscalYear.year : (active_year ? active_year.year : '-') }}</strong></p>
+        <div class="row">
+        <input type="hidden" id="transaction-type" name="type" value="{{ transaction ? transaction.type.value : values.type }}">
+        <div class="form-group col-md-6 col-xl-4"><label for="transaction-date">{{ 'transaction.date'|trans }}</label><input class="form-control" id="transaction-date" type="date" name="date" value="{{ values.date|default(active_year and active_year.year != ('now'|date('Y')) ? active_year.year ~ '-01-01' : 'now'|date('Y-m-d')) }}" required></div>
+        {% for side, types in {from: '2,3', to: '1,2'} %}
+            <div class="form-group col-md-6 col-xl-4" data-transaction-types="{{ types }}" data-locked="{{ own_organization and (side == 'from' or (values.type|default(1)) == 1) ? 1 : 0 }}" id="organization-{{ side }}">
+                <label for="transaction-{{ side }}">{{ ('transaction.' ~ side)|trans }}</label>
+                <select class="form-control select2" id="transaction-{{ side }}" name="{{ side }}_organization_id">
+                    <option value="">{{ 'transaction.choose'|trans }}</option>
+                    {% for organization in organizations %}<option value="{{ organization.id }}" {% if values[side ~ '_organization_id']|default('') == organization.id or (own_organization and own_organization.id == organization.id and (side == 'from' or (values.type|default(1)) == 1)) %}selected{% endif %}>{{ organization.name }}</option>{% endfor %}
+                </select>
+            </div>
+        {% endfor %}
+        <div class="form-group col-md-6 col-xl-4" data-transaction-types="1"><label for="transaction-source">{{ 'transaction.source'|trans }}</label><select class="form-control select2" name="source_id" id="transaction-source"><option value="">{{ 'transaction.choose'|trans }}</option>{% for source in sources %}<option value="{{ source.id }}" {% if values.source_id|default('') == source.id %}selected{% endif %}>{{ source.name }}</option>{% endfor %}</select></div>
+        <div class="form-group col-md-6 col-xl-4"><label class="required" for="transaction-reference">{{ 'transaction.reference'|trans }}</label><input class="form-control" id="transaction-reference" name="reference_number" required maxlength="255" value="{{ values.reference_number|default('') }}"></div>
+        <div class="form-group col-md-6 col-xl-4"><label for="transaction-notes">{{ 'transaction.notes'|trans }}</label><textarea class="form-control" id="transaction-notes" name="notes" maxlength="10000">{{ values.notes|default('') }}</textarea><small class="form-text text-muted">{{ 'transaction.notes_help'|trans }}</small></div>
+        </div>
+    </div>

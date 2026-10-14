@@ -1,0 +1,6 @@
+{% trans_default_domain 'pages' %}
+<form method="post" id="transaction-header-form">
+    <input type="hidden" name="_operation" value="header">
+    {% include 'transaction/header_fields.html.twig' %}
+    <div class="card-footer text-right"><button type="submit" class="btn btn-success">{{ 'transaction.save_draft'|trans }}</button></div>
+</form>

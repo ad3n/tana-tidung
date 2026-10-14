@@ -185,3 +185,65 @@ sas.page.item_conversion.automatic: '1 %unit% = 1 %unit% (otomatis).'
 sas.page.item_conversion.classify: 'Tentukan jenis satuan %unit% pada master Satuan terlebih dahulu.'
 sas.page.item_conversion.eligible: 'Satuan Dasar %unit% sudah memiliki faktor 1, sehingga tidak ditampilkan sebagai pilihan. Tambahkan satuan lain dengan jenis yang sama atau jenis Kemasan pada master Satuan.'
 sas.page.item_conversion.delete_confirm: 'Hapus konversi satuan ini?'
+
+transaction.title: Transaksi
+transaction.detail: Detail Transaksi
+transaction.add: Tambah Transaksi
+transaction.type: Jenis Transaksi
+transaction.type.1: Penerimaan
+transaction.type.2: Transfer
+transaction.type.3: Pengeluaran
+transaction.status: Status
+transaction.status.1: Draft
+transaction.status.2: Dikirim
+transaction.status.3: Selesai
+transaction.status.4: Dibatalkan
+transaction.code: Nomor Transaksi
+transaction.date: Tanggal
+transaction.fiscal_year: Tahun Anggaran
+transaction.from: SKPD/OPD Asal
+transaction.to: SKPD/OPD Tujuan
+transaction.organization: SKPD/OPD
+transaction.source: Sumber Barang
+transaction.reference: Nomor Referensi
+transaction.notes: Catatan
+transaction.notes_help: Wajib diisi untuk pengeluaran akhir seperti rusak atau kedaluwarsa.
+transaction.choose: Pilih
+transaction.save_draft: Simpan Draft
+transaction.search: Cari nomor transaksi atau referensi
+transaction.view: Lihat
+transaction.back: Kembali
+transaction.empty: Belum ada transaksi.
+transaction.items: Detail Barang
+transaction.item: Barang
+transaction.unit: Satuan
+transaction.qty: Jumlah
+transaction.base_qty: Jumlah Satuan Dasar
+transaction.qty_help: Gunakan titik untuk pecahan, maksimal 6 angka desimal.
+transaction.batch: Batch
+transaction.expiry: Tanggal Kedaluwarsa
+transaction.expiry_help: Wajib diisi untuk barang yang bisa kedaluwarsa.
+transaction.auto_batch: Otomatis
+transaction.selected_batch: Batch dipilih
+transaction.fefo: Otomatis — kedaluwarsa terdekat lebih dahulu (FEFO)
+transaction.add_item: Tambah Barang
+transaction.remove: Hapus
+transaction.empty_items: Belum ada barang. Tambahkan barang sebelum memproses transaksi.
+transaction.action.post: Selesaikan
+transaction.action.send: Kirim
+transaction.action.receive: Terima
+transaction.action.cancel: Batalkan
+transaction.stock: Stok Barang
+transaction.location: Status Stok
+transaction.location.AVAILABLE: Tersedia
+transaction.location.IN_TRANSIT: Dalam Perjalanan
+transaction.empty_stock: Belum ada stok.
+transaction.batch_help: Kosongkan untuk membuat Nomor Batch otomatis saat penerimaan diselesaikan.
+transaction.item_code: Kode Barang
+transaction.available_stock: Stok Tersedia (Satuan Dasar)
+transaction.actions: Aksi
+transaction.close: Tutup
+transaction.list: Daftar Transaksi
+transaction.entry_help: Isi data transaksi, tambahkan barang, lalu simpan draft untuk diperiksa sebelum diproses.
+transaction.choose_origin: Pilih SKPD/OPD asal terlebih dahulu.
+transaction.no_available_stock: Tidak ada stok yang dapat digunakan untuk barang ini.

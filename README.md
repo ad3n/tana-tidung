@@ -710,8 +710,8 @@ positif, dengan maksimal 6 angka desimal. Gunakan titik sebagai pemisah desimal.
 Halaman konversi mengikuti hak View Barang; tambah/hapus membutuhkan Edit Barang.
 Satuan dasar tidak dapat diganti selama konversi masih ada. Jenis satuan yang
 sudah digunakan tidak dapat diubah. Form konversi direset setelah berhasil disimpan.
-Modul penerimaan/pengeluaran belum menggunakan konversi ini; saat modul tersebut
-tersedia, simpan salinan faktor dan jumlah satuan dasar pada detail transaksi.
+Transaksi menyimpan salinan faktor dan jumlah satuan dasar pada detail barang.
+Satuan dasar tidak dapat diubah setelah barang memiliki detail transaksi.
 
 Untuk memperbarui skema instalasi lama (tanpa memuat ulang fixtures):
 
@@ -720,3 +720,137 @@ docker compose exec app php bin/console doctrine:schema:update --dump-sql
 docker compose exec app php bin/console doctrine:schema:update --force --no-interaction
 docker compose exec app php tests/item-conversions-smoke.php
 ```
+
+
+## Transaksi dan stok
+
+Menu Transaksi mendukung penerimaan eksternal, transfer antar-SKPD/OPD, dan
+pengeluaran akhir melalui submenu Penerimaan, Transfer, dan Pengeluaran. Masing-masing
+submenu memfilter daftar dan menetapkan jenis transaksi pada form secara otomatis.
+Hak operasi tetap mengikuti menu Transaksi; hak submenu mengatur tampilnya navigasi.
+Jalankan `app:transactions:install` untuk memperbarui menu database tanpa memuat ulang
+fixtures. Hak submenu yang baru dibuat menyalin hak Transaksi setiap group.
+Tahun Anggaran berada paling atas pada menu Master.
+Nomor Batch yang kosong dibuat otomatis saat penerimaan diselesaikan dengan format
+`BATCH<YYYYMMDD><RANDOM5DIGIT>`, satu nomor unik per detail barang. Nomor yang diisi
+manual tetap dipertahankan; transfer mengikuti batch asal.
+Nomor Referensi wajib diisi untuk semua jenis transaksi, termasuk sebelum draft
+dikirim atau diselesaikan; nilai kosong atau hanya spasi ditolak.
+
+Nomor transaksi baru menggunakan `TRX<FiscalYear><SKPD_CODE><YYYYMMDD><RANDOM5DIGIT>`
+tanpa pemisah. Kode SKPD/OPD memakai tujuan untuk penerimaan dan asal untuk
+transfer/pengeluaran; tanggal memakai tanggal transaksi. Lima digit acak diperiksa
+agar nomor unik. Nomor tetap saat draft diedit dan nomor transaksi lama tidak diubah.
+
+- `TransactionType` adalah backed enum integer: `RECEIPT=1`, `TRANSFER=2`, `DISPOSAL=3`.
+- `TransactionStatus`: `DRAFT=1`, `SENT=2`, `COMPLETED=3`, `CANCELLED=4`.
+- Doctrine menyimpan keduanya sebagai SMALLINT. Command instalasi menambahkan
+  CHECK constraint, termasuk bentuk asal/tujuan/sumber yang sesuai jenis transaksi.
+- Draft penerimaan/pengeluaran menjadi Selesai melalui tombol Selesaikan.
+  Transfer: Draft → Dikirim → Selesai melalui tombol Kirim dan Terima.
+- Hanya Draft yang boleh diedit/dibatalkan. Dokumen yang sudah dibukukan tidak
+  dapat dihapus atau diubah. Pengembalian setelah penerimaan dibuat sebagai
+  transfer balik dengan `reference_number`; tidak ada relasi retur khusus.
+  Pembatalan pengiriman, retur pemasok, koreksi pembukuan, dan penerimaan parsial
+  belum merupakan aksi yang tersedia.
+- Pengeluaran akhir wajib memiliki `notes` yang tidak hanya berisi spasi.
+  Tidak ada kolom reason atau master alasan.
+- Tahun anggaran diisi server dari tahun aktif; tanggal harus berada dalam
+  tahun tersebut. Penerimaan transfer yang sudah dikirim tetap boleh diselesaikan
+  setelah pergantian tahun. Stok tidak direset saat tahun anggaran berganti.
+- Satuan input harus berupa satuan dasar atau konversi terdaftar untuk barang.
+  Jumlah, faktor, dan jumlah dasar disimpan sebagai decimal, bukan float.
+  Perkalian yang memerlukan lebih dari 6 desimal ditolak, bukan dibulatkan diam-diam.
+- Penerimaan membuat batch; barang expirable wajib memiliki tanggal kedaluwarsa.
+  Pengeluaran dapat memilih batch tertentu atau mengambil otomatis menurut FEFO.
+  Batch yang sudah kedaluwarsa tidak dapat ditransfer, tetapi dapat dikeluarkan
+  melalui pengeluaran akhir. Batch dan asal penerimaan tetap sama setelah transfer.
+- Kirim memindahkan stok tersedia asal ke stok dalam perjalanan. Terima
+  mengeluarkan stok dalam perjalanan asal dan menambah stok tersedia tujuan.
+  Semua mutasi dibukukan dalam transaksi database atomik dengan advisory lock,
+  pengecekan saldo dan status, serta unique constraint untuk mencegah duplikasi.
+
+Super admin dikenali dari `APP_SUPER_ADMIN`, dapat memilih organisasi. Pengguna
+lain harus memiliki tepat satu Employee dengan organisasi aktif. Asal pengeluaran
+atau tujuan penerimaan otomatis organisasi pengguna; ID organisasi yang dimanipulasi
+akan ditolak. Pengguna hanya melihat stok sendiri dan transaksi yang melibatkan
+organisasinya. Hanya tujuan transfer atau super admin yang bisa menerima.
+
+Hak menu TRANSACTION tetap diperlukan: View untuk daftar/detail/stok, Add untuk
+membuat draft, Edit untuk menyunting detail/mengirim/membukukan/menerima, Delete
+untuk membatalkan draft. Data master yang sudah direferensikan transaksi tidak
+boleh dihapus agar riwayat tetap dapat dibaca. Berikan View/Add/Edit/Delete yang sesuai melalui Hak Akses
+Group. Instalasi hanya mengaktifkan semua hak secara otomatis untuk super admin;
+grup lain tidak diberi akses baru tanpa pengaturan administrator.
+
+### Instalasi tanpa menghapus data
+
+```bash
+docker compose exec app php bin/console doctrine:schema:update --dump-sql
+docker compose exec app php bin/console doctrine:schema:update --force --no-interaction
+docker compose exec app php bin/console app:transactions:install
+```
+
+Command terakhir idempotent: membuat menu/permission yang belum ada dan constraint,
+tanpa menimpa izin grup yang sudah dikonfigurasi. Jangan memuat ulang seluruh fixtures
+pada database yang sudah berisi data.
+
+### API transaksi
+
+Semua endpoint membutuhkan Bearer token dan hak menu Transaksi yang sesuai.
+Nilai `type` dan `status` pada respons JSON adalah integer; jumlah adalah string decimal.
+
+| Method | Endpoint | Keterangan |
+|---|---|---|
+| GET | `/api/transactions?page=1&q=...` | Daftar sesuai organisasi, 25 dokumen per halaman |
+| POST | `/api/transactions` | Buat draft |
+| GET | `/api/transactions/{id}` | Detail dan alokasi batch |
+| PUT | `/api/transactions/{id}` | Ganti isi header draft; jenis tetap |
+| POST | `/api/transactions/{id}/items` | Tambah detail |
+| DELETE | `/api/transactions/{id}/items/{lineId}` | Hapus detail draft |
+| POST | `/api/transactions/{id}/post` | Selesaikan penerimaan/pengeluaran |
+| POST | `/api/transactions/{id}/send` | Kirim transfer |
+| POST | `/api/transactions/{id}/receive` | Terima seluruh transfer |
+| POST | `/api/transactions/{id}/cancel` | Batalkan draft |
+| GET | `/api/transactions/stocks?organization_id=...` | Saldo per organisasi, barang, batch, dan posisi stok |
+
+Contoh header penerimaan (ID berupa UUID aktual):
+
+```json
+{
+  "type": 1,
+  "date": "2027-01-01",
+  "to_organization_id": "UUID-SKPD",
+  "source_id": "UUID-SUMBER",
+  "reference_number": "BA-001",
+  "notes": "Penerimaan awal"
+}
+```
+
+Detail penerimaan:
+
+```json
+{
+  "item_id": "UUID-BARANG",
+  "unit_id": "UUID-SATUAN",
+  "qty": "2.5",
+  "batch_number": "BATCH-001",
+  "expiry_date": "2028-01-01"
+}
+```
+
+Untuk transfer/pengeluaran, `stock_lot_id` opsional (kosong = FEFO). Jangan kirim
+`batch_number` atau `expiry_date` karena mengikuti batch yang sudah ada. Untuk
+transfer, kirim `to_organization_id`; `from_organization_id` otomatis bagi pengguna
+SKPD/OPD dan wajib dipilih super admin. Pengeluaran akhir hanya memiliki asal.
+Field status, saldo, faktor konversi, dan tahun anggaran tidak boleh diatur langsung.
+
+Pemeriksaan integrasi:
+
+```bash
+docker compose exec app php -d memory_limit=512M tests/transactions-smoke.php
+```
+
+Pengujian membuat akun khusus agar tidak mengeluarkan sesi admin pengguna, menguji
+akses lintas organisasi, FEFO, konversi snapshot, rollback, pembukuan bersamaan,
+serta halaman admin, kemudian membersihkan hanya data uji miliknya.

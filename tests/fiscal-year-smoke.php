@@ -87,7 +87,7 @@ try {
     $dom = new DOMDocument();
     @$dom->loadHTML($html);
     $xpath = new DOMXPath($dom);
-    checkModule($xpath->query('//li[contains(@class,"has-treeview")][a/p[contains(text(),"Administrator")]]//a[@href="/admin/fiscal-years"]')->length === 1, 'Fiscal year missing from Administrator');
+    checkModule($xpath->query('//li[contains(@class,"has-treeview")][a/p[contains(text(),"Master")]]//a[@href="/admin/fiscal-years"]')->length === 1, 'Fiscal year missing from Master');
     $yearInput = $xpath->query('//input[contains(@name,"[year]")]')->item(0);
     $formName = explode('[', $yearInput->getAttribute('name'))[0];
     request('/admin/fiscal-years', 303, 'POST', http_build_query([$formName => ['year' => $year, 'status' => '1']]), $headers);

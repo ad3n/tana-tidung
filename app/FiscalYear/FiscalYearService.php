@@ -61,6 +61,9 @@ final class FiscalYearService extends AbstractService implements ServiceInterfac
     public function remove(EntityInterface $object): void
     {
         $this->withActiveYearLock(function () use ($object): void {
+            if ($this->em->getConnection()->fetchOne('SELECT 1 FROM transactions WHERE fiscal_year_id = ? LIMIT 1', [$object->getId()])) {
+                throw new ConflictHttpException('Tahun anggaran sudah digunakan dalam transaksi.');
+            }
             $active = $this->em->getConnection()->fetchOne('SELECT status FROM fiscal_years WHERE id = ? AND deleted_at IS NULL', [$object->getId()]);
             if ($active) {
                 throw new ConflictHttpException('Tahun anggaran aktif tidak dapat dihapus. Aktifkan tahun anggaran lain terlebih dahulu.');

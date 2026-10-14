@@ -1,0 +1,46 @@
+{% extends 'transaction/base.html.twig' %}
+{% trans_default_domain 'pages' %}
+{% block content %}
+    {% set menu = convert_to_menu('transaction') %}
+    {% set editable = transaction.status.value == 1 and can_operate and is_granted('edit', menu) %}
+    {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header"><h4>{{ transaction.code }}</h4>{% include 'transaction/status.html.twig' %}</div>
+                {% if editable %}{% include 'transaction/header_form.html.twig' %}{% else %}
+                    <div class="card-body"><dl>
+                    {% for label, value in {
+                        type: transaction.type.label|trans, date: transaction.date|date('d-m-Y'), fiscal_year: transaction.fiscalYear.year,
+                        from: transaction.fromOrganization ? transaction.fromOrganization.name : '-', to: transaction.toOrganization ? transaction.toOrganization.name : '-',
+                        source: transaction.source ? transaction.source.name : '-', reference: transaction.referenceNumber, notes: transaction.notes
+                    } %}<dt>{{ ('transaction.' ~ label)|trans }}</dt><dd>{{ value|default('-') }}</dd>{% endfor %}
+                    </dl></div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="card"><div class="card-header"><h4>{{ 'transaction.items'|trans }}</h4></div>
+                <div class="card-body table-responsive"><table class="table"><thead><tr><th>{{ 'transaction.item_code'|trans }}</th><th>{{ 'transaction.item'|trans }}</th><th>{{ 'transaction.qty'|trans }}</th><th>{{ 'transaction.base_qty'|trans }}</th><th>{{ 'transaction.batch'|trans }}</th>{% if editable %}<th></th>{% endif %}</tr></thead><tbody>
+                {% for line in data.items %}<tr>
+                    <td>{{ line.item_code }}</td><td>{{ line.item_name }}</td><td>{{ line.qty|number_format(2, ',', '.') }} {{ line.unit_name }}<br><small>× {{ line.conversion_factor }}</small></td><td>{{ line.base_qty|number_format(2, ',', '.') }} {{ line.base_unit_name }}</td>
+                    <td>{% for allocation in line.allocations %}{{ allocation.batch_number }}: {{ allocation.base_qty|number_format(2, ',', '.') }}<br>{{ allocation.expiry_date|default('-') }}<br>{% else %}{{ line.batch_number|default(line.stock_lot_id ? 'transaction.selected_batch'|trans : 'transaction.auto_batch'|trans) }}<br>{{ line.expiry_date|default('') }}{% endfor %}</td>
+                    {% if editable %}<td><form method="post"><input type="hidden" name="_operation" value="remove_line"><input type="hidden" name="line_id" value="{{ line.id }}"><button type="submit" class="btn btn-sm btn-outline-danger">{{ 'transaction.remove'|trans }}</button></form></td>{% endif %}
+                </tr>{% else %}<tr><td colspan="6">{{ 'transaction.empty_items'|trans }}</td></tr>{% endfor %}
+                </tbody></table></div>
+            </div>
+            <div class="d-flex justify-content-between flex-wrap mb-3">
+                <div>{% if editable %}<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#transaction-item-modal">{{ 'transaction.add_item'|trans }}</button>{% endif %}</div>
+                <div class="text-right">
+                    <a class="btn btn-outline-secondary" href="{{ path('KejawenLab\\Application\\Admin\\Controller\\Transaction\\Main_' ~ {1: 'receipt', 2: 'transfer', 3: 'disposal'}[transaction.type.value]) }}">{{ 'transaction.back'|trans }}</a>
+                    {% set actions = [] %}
+                    {% if editable %}{% set actions = [transaction.type.value == 2 ? 'send' : 'post'] %}{% endif %}
+                    {% if transaction.status.value == 2 and can_receive and is_granted('edit', menu) %}{% set actions = ['receive'] %}{% endif %}
+                    {% if transaction.status.value == 1 and can_operate and is_granted('delete', menu) %}{% set actions = actions|merge(['cancel']) %}{% endif %}
+                    {% for action in actions %}<form method="post" class="d-inline transaction-action"><input type="hidden" name="_operation" value="{{ action }}"><button type="submit" class="btn btn-outline-{{ action == 'cancel' ? 'danger' : 'primary' }}">{{ ('transaction.action.' ~ action)|trans }}</button></form>{% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% if editable %}{% include 'transaction/item_modal.html.twig' %}{% endif %}
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'transaction/base.html.twig' %}
+{% trans_default_domain 'pages' %}
+{% block content %}
+    {% set menu = convert_to_menu('transaction') %}
+    {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+    {% if is_granted('add', menu) %}{% include 'transaction/create_form.html.twig' %}{% endif %}
+    <div class="row" id="transaction-list">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <a class="btn btn-outline-info mb-2" href="{{ path('KejawenLab\\Application\\Admin\\Controller\\Transaction\\Stock') }}">{{ 'transaction.stock'|trans }}</a>
+                    <form method="get" class="input-group"><input class="form-control" name="q" value="{{ app.request.query.get('q') }}" placeholder="{{ 'transaction.search'|trans }}"><div class="input-group-append"><button class="btn btn-outline-secondary">{{ 'transaction.search'|trans }}</button></div></form>
+                </div>
+                <div class="card-body table-responsive">
+                    <table class="table"><thead><tr><th>{{ 'transaction.code'|trans }}</th><th>{{ 'transaction.type'|trans }}</th><th>{{ 'transaction.organization'|trans }}</th><th>{{ 'transaction.status'|trans }}</th><th></th></tr></thead><tbody>
+                    {% for transaction in list.items %}
+                        <tr><td>{{ transaction.code }}<br><small>{{ transaction.date|date('d-m-Y') }}</small></td><td>{{ transaction.type.label|trans }}</td><td>{{ transaction.fromOrganization ? transaction.fromOrganization.name : '-' }} → {{ transaction.toOrganization ? transaction.toOrganization.name : '-' }}</td><td>{% include 'transaction/status.html.twig' %}</td><td><a class="btn btn-sm btn-outline-secondary" href="{{ path('KejawenLab\\Application\\Admin\\Controller\\Transaction\\Get', {id: transaction.id}) }}">{{ 'transaction.view'|trans }}</a></td></tr>
+                    {% else %}<tr><td colspan="5">{{ 'transaction.empty'|trans }}</td></tr>{% endfor %}
+                    </tbody></table>
+                </div>
+                {% if list.total > 25 or list.page > 1 %}
+                <div class="card-footer">
+                    {% if list.page > 1 %}<a class="btn btn-outline-secondary" href="{{ path(app.request.attributes.get('_route'), {page: list.page - 1, q: app.request.query.get('q')}) }}">←</a>{% endif %}
+                    {{ list.page }}
+                    {% if list.total > list.page * 25 %}<a class="btn btn-outline-secondary" href="{{ path(app.request.attributes.get('_route'), {page: list.page + 1, q: app.request.query.get('q')}) }}">→</a>{% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}
