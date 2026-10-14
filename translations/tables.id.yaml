@@ -22,7 +22,7 @@ sas:
             user:
                 group: 'Grup'
                 supervisor: 'Pengawas'
-                username: 'Penguna'
+                username: 'Username'
                 profileImage: 'Foto Profil'
                 fullName: 'Nama Lengkap'
                 email: 'Email'
@@ -83,3 +83,15 @@ sas:
                 files: 'Files'
                 content: 'Response'
                 statusCode: 'Status Code'
+            level:
+                name: 'Nama Jabatan'
+            organization:
+                parent: 'SKPD/OPD Induk'
+                code: 'Kode'
+                name: 'Nama SKPD/OPD'
+            employee:
+                user: 'Pengguna'
+                organization: 'SKPD/OPD'
+                level: 'Jabatan'
+                code: 'Kode Pegawai'
+                name: 'Nama Pegawai'

@@ -1,0 +1,44 @@
+<?php
+
+declare(strict_types=1);
+
+namespace KejawenLab\Application\Admin\Controller\Organization;
+
+use KejawenLab\Application\Organization\OrganizationService;
+use KejawenLab\ApiSkeleton\Security\Annotation\Permission;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Serializer\SerializerInterface;
+
+/**
+ * @author Muhamad Surya Iksanudin<surya.iksanudin@gmail.com>
+ */
+#[Permission(menu: 'ORGANIZATION', actions: [Permission::VIEW])]
+final class Download extends AbstractController
+{
+    public function __construct(private OrganizationService $service, private SerializerInterface $serializer)
+    {
+    }
+
+    #[Route(path: '/organizations/download', name: self::class, methods: ['GET'])]
+    public function __invoke(): Response
+    {
+        $records = $this->service->total();
+        if (10000 < $records) {
+            $this->addFlash('error', 'sas.page.error.too_many_records');
+
+            return new RedirectResponse($this->generateUrl(Main::class));
+        }
+
+        $response = new Response();
+        $response->headers->set('Cache-Control', 'private');
+        $response->headers->set('Content-type', 'text/csv');
+        $response->headers->set('Content-Disposition', sprintf('attachment; filename="%s_%s.csv"', 'organizations', date('YmdHis')));
+
+        $response->setContent($this->serializer->serialize($this->service->all(), 'csv', ['groups' => 'read']));
+
+        return $response;
+    }
+}

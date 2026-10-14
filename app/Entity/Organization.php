@@ -89,7 +89,7 @@ class Organization implements OrganizationInterface
         $parent = $this->parent;
         while ($parent !== null) {
             if ($seen->contains($parent) || ($this->getId() !== null && $parent->getId() === $this->getId())) {
-                $context->buildViolation('Organisasi induk tidak boleh membentuk hubungan melingkar.')
+                $context->buildViolation('SKPD/OPD induk tidak boleh membentuk hubungan melingkar.')
                     ->atPath('parent')->addViolation();
 
                 return;

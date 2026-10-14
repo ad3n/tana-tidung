@@ -43,6 +43,8 @@ final class Main extends AbstractController
             if ($form->isValid()) {
                 $this->service->save($form->getData());
                 $this->addFlash('info', 'sas.page.media.saved');
+
+                return $this->redirectToRoute(self::class, $request->query->all(), Response::HTTP_SEE_OTHER);
             }
         }
 

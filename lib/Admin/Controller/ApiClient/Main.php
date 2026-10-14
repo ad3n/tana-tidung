@@ -54,6 +54,8 @@ final class Main extends AbstractController
                 $this->service->save($form->getData());
 
                 $this->addFlash('info', 'sas.page.api_client.saved');
+
+                return $this->redirectToRoute(self::class, ['userId' => $userId] + $request->query->all(), Response::HTTP_SEE_OTHER);
             }
         }
 
@@ -65,7 +67,7 @@ final class Main extends AbstractController
             'context' => $context,
             'properties' => $class->getProperties(ReflectionProperty::IS_PRIVATE),
             'paginator' => $this->paginator->paginate($this->service->getQueryBuilder(), $request, ApiClient::class),
-            'form' => $this->createForm(ApiClientType::class)->createView(),
+            'form' => $form->createView(),
             'user_id' => $userId,
         ]);
     }

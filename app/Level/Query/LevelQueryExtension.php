@@ -22,11 +22,9 @@ final class LevelQueryExtension extends AbstractQueryExtension
             return;
         }
 
-        /**
-         * Uncomment to implement your own search logic
-         *
-         * $queryBuilder->andWhere($queryBuilder->expr()->like(sprintf('UPPER(%s.name)', $this->aliasHelper->findAlias('root')), $queryBuilder->expr()->literal(sprintf('%%%s%%', StringUtil::uppercase($query)))));
-         */
+        $alias = $this->aliasHelper->findAlias('root');
+        $queryBuilder->andWhere(sprintf('(UPPER(%s.name) LIKE :levelSearch)', $alias))
+            ->setParameter('levelSearch', '%' . StringUtil::uppercase($query) . '%');
     }
 
     public function support(string $class, Request $request): bool

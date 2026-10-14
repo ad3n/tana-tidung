@@ -19,10 +19,12 @@ final class GroupType extends AbstractType
     {
         $builder->add('code', TextType::class, [
             'required' => true,
+            'empty_data' => '',
             'label' => 'sas.form.field.group.code',
         ]);
         $builder->add('name', TextType::class, [
             'required' => true,
+            'empty_data' => '',
             'label' => 'sas.form.field.group.name',
         ]);
     }

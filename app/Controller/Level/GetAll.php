@@ -32,6 +32,7 @@ final class GetAll extends AbstractFOSRestController
 
     #[Get(data: '/levels', name: self::class)]
     #[Security(name: 'Bearer')]
+    #[Parameter(name: 'q', in: 'query', description: 'Pencarian nama atau kode', schema: new OA\Schema(type: 'string'))]
     #[Parameter(name: 'page', in: 'query', schema: new OA\Schema(type: 'integer', format: 'int32'))]
     #[Parameter(name: 'limit', in: 'query', schema: new OA\Schema(type: 'integer', format: 'int32'))]
     #[Response(

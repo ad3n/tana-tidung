@@ -31,7 +31,7 @@ final class Put extends AbstractController
             $this->addFlash('error', 'sas.page.cron.not_found');
         }
 
-        $this->addFlash('id', $cron->getId());
+        $this->addFlash('admin_edit.' . Main::class, $cron->getId());
 
         return new RedirectResponse($this->generateUrl(Main::class, $request->query->all()));
     }

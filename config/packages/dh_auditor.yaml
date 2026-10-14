@@ -23,3 +23,6 @@ dh_auditor:
                 KejawenLab\ApiSkeleton\Entity\User: ~
                 KejawenLab\Application\Entity\Level: ~
                 KejawenLab\Application\Entity\Organization: ~
+                KejawenLab\Application\Entity\Employee: ~
+                KejawenLab\Application\Entity\Unit: ~
+                KejawenLab\Application\Entity\Source: ~

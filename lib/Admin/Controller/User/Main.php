@@ -38,16 +38,17 @@ final class Main extends AbstractController
     {
         $user = new User();
         if ($request->isMethod(Request::METHOD_POST)) {
-            $id = $request->getSession()->get('id');
+            $id = $request->getSession()->get('admin_edit.' . self::class);
             if (null !== $id) {
                 $user = $this->service->get($id);
             }
         } else {
-            $flashes = $request->getSession()->getFlashBag()->get('id');
+            $request->getSession()->remove('admin_edit.' . self::class);
+            $flashes = $request->getSession()->getFlashBag()->get('admin_edit.' . self::class);
             foreach ($flashes as $flash) {
                 $user = $this->service->get($flash);
                 if (null !== $user) {
-                    $request->getSession()->set('id', $user->getId());
+                    $request->getSession()->set('admin_edit.' . self::class, $user->getId());
 
                     break;
                 }
@@ -60,8 +61,9 @@ final class Main extends AbstractController
             if ($form->isValid()) {
                 $this->service->save($form->getData());
                 $this->addFlash('info', 'sas.page.user.saved');
+                $request->getSession()->remove('admin_edit.' . self::class);
 
-                $form = $this->createForm(UserType::class);
+                return $this->redirectToRoute(self::class, $request->query->all(), Response::HTTP_SEE_OTHER);
             }
         }
 

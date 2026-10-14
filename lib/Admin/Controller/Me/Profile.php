@@ -81,6 +81,8 @@ final class Profile extends AbstractController
                 $this->service->save($user);
 
                 $this->addFlash('info', 'sas.page.profile.updated');
+
+                return $this->redirectToRoute(self::class, [], Response::HTTP_SEE_OTHER);
             }
         }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Controller\Level;
 
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use FOS\RestBundle\Controller\AbstractFOSRestController;
 use FOS\RestBundle\Controller\Annotations\Get as Route;
 use FOS\RestBundle\View\View;

@@ -38,16 +38,17 @@ final class Main extends AbstractController
     {
         $cron = new Cron();
         if ($request->isMethod(Request::METHOD_POST)) {
-            $id = $request->getSession()->get('id');
+            $id = $request->getSession()->get('admin_edit.' . self::class);
             if (null !== $id) {
                 $cron = $this->service->get($id);
             }
         } else {
-            $flashes = $request->getSession()->getFlashBag()->get('id');
+            $request->getSession()->remove('admin_edit.' . self::class);
+            $flashes = $request->getSession()->getFlashBag()->get('admin_edit.' . self::class);
             foreach ($flashes as $flash) {
                 $cron = $this->service->get($flash);
                 if (null !== $cron) {
-                    $request->getSession()->set('id', $cron->getId());
+                    $request->getSession()->set('admin_edit.' . self::class, $cron->getId());
 
                     break;
                 }
@@ -60,6 +61,9 @@ final class Main extends AbstractController
             if ($form->isValid()) {
                 $this->service->save($form->getData());
                 $this->addFlash('info', 'sas.page.cron.saved');
+                $request->getSession()->remove('admin_edit.' . self::class);
+
+                return $this->redirectToRoute(self::class, $request->query->all(), Response::HTTP_SEE_OTHER);
             }
         }
 

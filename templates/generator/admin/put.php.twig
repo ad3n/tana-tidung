@@ -37,7 +37,7 @@ final class Put extends AbstractController
             return new RedirectResponse($this->generateUrl(Main::class, $request->query->all()));
         }
 
-        $this->addFlash('id', ${{ entityLowerize }}->getId());
+        $this->addFlash('admin_edit.' . Main::class, ${{ entityLowerize }}->getId());
 
         return new RedirectResponse($this->generateUrl(Main::class, $request->query->all()));
     }

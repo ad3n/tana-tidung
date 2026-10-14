@@ -37,7 +37,7 @@ final class Main extends AbstractController
     {
         $level = new Level();
         if ($request->isMethod(Request::METHOD_POST)) {
-            $id = $request->getSession()->get('id');
+            $id = $request->getSession()->get('admin_edit.' . self::class);
             if (null !== $id) {
                 $level = $this->service->get($id);
             }
@@ -48,18 +48,20 @@ final class Main extends AbstractController
             if ($form->isValid()) {
                 $this->service->save($form->getData());
                 $this->addFlash('info', 'sas.page.level.saved');
+                $request->getSession()->remove('admin_edit.' . self::class);
 
-                $form = $this->createForm(LevelType::class);
+                return $this->redirectToRoute(self::class, $request->query->all(), Response::HTTP_SEE_OTHER);
             }
 
             return $this->renderList($form, $request, new ReflectionClass(Level::class));
         }
 
-        $flashes = $request->getSession()->getFlashBag()->get('id');
+        $request->getSession()->remove('admin_edit.' . self::class);
+        $flashes = $request->getSession()->getFlashBag()->get('admin_edit.' . self::class);
         foreach ($flashes as $flash) {
             $level = $this->service->get($flash);
             if (null !== $level) {
-                $request->getSession()->set('id', $level->getId());
+                $request->getSession()->set('admin_edit.' . self::class, $level->getId());
 
                 break;
             }
