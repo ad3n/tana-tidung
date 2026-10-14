@@ -1,0 +1,26 @@
+semart_api:
+    prefix: /api
+    resource: ../../lib/Controller/
+    type: attribute
+
+semart_admin:
+    prefix: /admin
+    resource: ../../lib/Admin/Controller/
+    type: attribute
+
+app_api:
+    prefix: /api
+    resource: ../../app/Controller/
+    type: attribute
+
+app_admin:
+    prefix: /admin
+    resource: ../../app/Admin/Controller/
+    type: attribute
+
+admin_logout:
+    path: /admin/logout
+
+kernel:
+    resource: ../../lib/Kernel.php
+    type: attribute

@@ -1,0 +1,143 @@
+{
+    "name": "kejawenlab/semartapiskeleton",
+    "type": "project",
+    "description": "Blazing fast application skeleton for building admin and api based application",
+    "keywords": ["semartapiskeleton", "semart api skeleton", "kejawenlab"],
+    "license": "MIT",
+    "homepage": "https://github.com/KejawenLab/SemartApiSkeleton",
+    "support": {
+        "issues": "https://github.com/KejawenLab/SemartApiSkeleton/issues",
+        "source": "https://github.com/KejawenLab/SemartApiSkeleton"
+    },
+    "authors": [
+        {
+            "name": "Muhamad Surya Iksanudin",
+            "email": "surya.iksanudin@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.4",
+        "ext-ctype": "*",
+        "ext-iconv": "*",
+        "ext-json": "*",
+        "ext-openssl": "*",
+        "ext-pdo": "*",
+        "ext-redis": "*",
+        "composer/composer": "^2.8",
+        "ad3n/cron": "^1.0",
+        "damienharper/auditor-bundle": "^6.2",
+        "doctrine/annotations": "^2.0",
+        "doctrine/dbal": "^4.2",
+        "doctrine/doctrine-bundle": "^2.13",
+        "doctrine/orm": "^3.3",
+        "friendsofphp/proxy-manager-lts": "^1.0",
+        "friendsofsymfony/rest-bundle": "^3.8",
+        "lexik/jwt-authentication-bundle": "^3.1",
+        "nelmio/api-doc-bundle": "^4.36",
+        "nelmio/cors-bundle": "^2.5",
+        "phpdocumentor/reflection-docblock": "^5.6",
+        "ramsey/uuid-doctrine": "^2.1",
+        "runtime/swoole": "^0.4",
+        "snc/redis-bundle": "^4.8",
+        "stof/doctrine-extensions-bundle": "^1.13",
+        "symfony/amqp-messenger": "^7.2",
+        "symfony/asset": "^7.2",
+        "symfony/console": "^7.2",
+        "symfony/doctrine-messenger": "^7.2",
+        "symfony/dotenv": "^7.2",
+        "symfony/flex": "^2.4",
+        "symfony/form": "^7.2",
+        "symfony/framework-bundle": "^7.2",
+        "symfony/http-client": "^7.2",
+        "symfony/lock": "^7.2",
+        "symfony/messenger": "^7.2",
+        "symfony/mime": "^7.2",
+        "symfony/monolog-bundle": "^3.10",
+        "symfony/property-access": "^7.2",
+        "symfony/property-info": "^7.2",
+        "symfony/rate-limiter": "^7.2",
+        "symfony/runtime": "^7.2",
+        "symfony/serializer": "^7.2",
+        "symfony/string": "^7.2",
+        "symfony/twig-bundle": "^7.2",
+        "symfony/validator": "^7.2",
+        "symfony/web-link": "^7.2",
+        "symfony/yaml": "^7.2",
+        "twig/extra-bundle": "^3.19",
+        "twig/twig": "^3.19",
+        "vich/uploader-bundle": "^2.5"
+    },
+    "require-dev": {
+        "dg/bypass-finals": "^1.9",
+        "doctrine/doctrine-fixtures-bundle": "^4.0",
+        "friendsofphp/php-cs-fixer": "^3.68",
+        "nunomaduro/phpinsights": "^2.12",
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^11.5",
+        "rector/rector": "^2.0",
+        "swoole/ide-helper": "^6.0",
+        "symfony/browser-kit": "^7.2",
+        "symfony/css-selector": "^7.2",
+        "symfony/debug-bundle": "^7.2",
+        "symfony/maker-bundle": "^1.62",
+        "symfony/phpunit-bridge": "^7.2",
+        "symfony/stopwatch": "^7.2",
+        "symfony/web-profiler-bundle": "^7.2"
+    },
+    "config": {
+        "preferred-install": {
+            "*": "dist"
+        },
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "allow-plugins": {
+            "composer/package-versions-deprecated": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "symfony/runtime": true,
+            "symfony/flex": true
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "KejawenLab\\ApiSkeleton\\": "lib/",
+            "KejawenLab\\Application\\": "app/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "KejawenLab\\ApiSkeleton\\Tests\\": "tests/lib",
+            "KejawenLab\\Application\\Tests\\": "tests/app",
+            "KejawenLab\\Stub\\": "tests/stub"
+        }
+    },
+    "replace": {
+        "paragonie/random_compat": "2.*",
+        "symfony/polyfill-ctype": "*",
+        "symfony/polyfill-iconv": "*",
+        "symfony/polyfill-php72": "*",
+        "symfony/polyfill-php71": "*",
+        "symfony/polyfill-php70": "*",
+        "symfony/polyfill-php56": "*"
+    },
+    "scripts": {
+        "auto-scripts": {
+            "cache:clear": "symfony-cmd",
+            "assets:install %PUBLIC_DIR%": "symfony-cmd"
+        },
+        "post-install-cmd": [
+            "@auto-scripts"
+        ],
+        "post-update-cmd": [
+            "@auto-scripts"
+        ]
+    },
+    "conflict": {
+        "symfony/symfony": "*"
+    },
+    "extra": {
+        "symfony": {
+            "allow-contrib": true,
+            "require": "^7.2"
+        }
+    }
+}
