@@ -87,7 +87,7 @@ try {
     request($path, 303, 'POST', $payload, $auth);
     request($path, 200, 'POST', $payload, $auth);
     [$html] = request($path, 200, headers: $auth);
-    checkModule(str_contains($html, '25.125000') && !str_contains($html, 'value="25.125"'), 'Stored factor or form reset incorrect');
+    checkModule(str_contains($html, '25,13') && !str_contains($html, 'value="25.125"'), 'Stored factor or form reset incorrect');
     checkModule((int) $em->getConnection()->fetchOne('SELECT COUNT(*) FROM item_unit_conversions WHERE item_id = ?', [$item['id']]) === 1, 'Duplicate conversion persisted');
 
     // Validate cross-dimension rejection independently of the filtered HTML choices.
@@ -113,6 +113,11 @@ try {
     $conversionId = $em->getConnection()->fetchOne('SELECT id FROM item_unit_conversions WHERE item_id = ?', [$item['id']]);
     request($path . '/' . $conversionId . '/delete', 303, 'POST', '', $auth);
     checkModule((int) $em->getConnection()->fetchOne('SELECT COUNT(*) FROM item_unit_conversions WHERE item_id = ?', [$item['id']]) === 0, 'Delete failed');
+    $em->getConnection()->executeStatement('UPDATE units SET deleted_at = NOW() WHERE id = ?', [$units['package']['id']]);
+    $em->getConnection()->executeStatement('UPDATE units SET type = ? WHERE id = ?', ['unclassified', $units['mass']['id']]);
+    [$html] = request($path, 200, headers: $auth);
+    checkModule(str_contains($html, 'Belum ada satuan yang sesuai untuk konversi.'), 'Empty choice explanation missing');
+    checkModule(!str_contains($html, 'name="item_unit_conversion[unit]"'), 'Empty conversion selector still shown');
     echo "Item unit conversion checks passed.\n";
 } finally {
     $db = $em->getConnection();

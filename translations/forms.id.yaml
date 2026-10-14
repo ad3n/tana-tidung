@@ -89,3 +89,8 @@ sas:
             back: 'Kembali'
             cancel: 'Batal'
             audit: 'Tampilkan Perubahan'
+
+sas.form.field.item_conversion.unit: 'Satuan Konversi'
+sas.form.field.item_conversion.placeholder: 'Pilih satuan'
+sas.form.field.item_conversion.factor: 'Faktor Konversi'
+sas.form.field.item_conversion.help: '1 satuan input berisi sejumlah satuan dasar ini. Gunakan titik untuk pecahan.'

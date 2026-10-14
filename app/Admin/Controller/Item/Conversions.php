@@ -43,7 +43,7 @@ final class Conversions extends AbstractController
             }
         }
         return $this->render('item/conversions.html.twig', [
-            'page_title' => 'Konversi Satuan',
+            'page_title' => 'sas.page.item_conversion.title',
             'data' => $item,
             'conversions' => $conversions,
             'form' => $form->createView(),

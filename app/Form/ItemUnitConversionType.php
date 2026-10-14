@@ -26,16 +26,17 @@ class ItemUnitConversionType extends AbstractType
                 return $query->where('u.id != :base')->andWhere('u.type IN (:types)')
                     ->setParameter('base', $base->getId())->setParameter('types', [$base->getType(), 'package']);
             },
-            'label' => 'Satuan Input / Kemasan',
-            'placeholder' => 'Pilih satuan',
+            'label' => 'sas.form.field.item_conversion.unit',
+            'placeholder' => 'sas.form.field.item_conversion.placeholder',
+            'attr' => ['class' => 'select2'],
         ])->add('factor', TextType::class, [
-            'label' => 'Isi per Satuan / Kemasan',
+            'label' => 'sas.form.field.item_conversion.factor',
             'empty_data' => '',
-            'help' => '1 satuan input berisi sejumlah satuan dasar ini. Gunakan titik untuk pecahan.',
+            'help' => 'sas.form.field.item_conversion.help',
         ]);
     }
     public function configureOptions(OptionsResolver $resolver): void
     {
-        $resolver->setDefaults(['data_class' => ItemUnitConversion::class]);
+        $resolver->setDefaults(['data_class' => ItemUnitConversion::class, 'translation_domain' => 'forms']);
     }
 }

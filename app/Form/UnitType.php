@@ -21,6 +21,7 @@ final class UnitType extends AbstractType
             'label' => 'Jenis Satuan',
             'empty_data' => '',
             'placeholder' => 'Pilih jenis satuan',
+            'attr' => ['class' => 'select2'],
             'choices' => ['Massa' => 'mass', 'Volume' => 'volume', 'Hitungan' => 'count', 'Panjang' => 'length', 'Luas' => 'area', 'Kemasan' => 'package'],
         ]);
         $builder->add('code', null, [

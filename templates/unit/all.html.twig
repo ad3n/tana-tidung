@@ -2,6 +2,8 @@
 
 {%- block stylesheets -%}
     <link rel="stylesheet" href="{{- asset('plugins/toastr/toastr.min.css') -}}">
+    <link rel="stylesheet" href="{{- asset('plugins/select2/css/select2.min.css') -}}">
+    <link rel="stylesheet" href="{{- asset('plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css') -}}">
 {%- endblock -%}
 {%- block content -%}
     {%- set menu = convert_to_menu(context) -%}
@@ -103,8 +105,13 @@
 {%- endblock -%}
 {%- block javascripts -%}
         <script src="{{- asset('plugins/toastr/toastr.min.js') -}}"></script>
+        <script src="{{- asset('plugins/select2/js/select2.full.min.js') -}}"></script>
         <script>
             $(document).ready(function () {
+                $('.select2').select2({
+                    theme: 'bootstrap4'
+                });
+
                 toastr.options = {
                     "closeButton": false,
                     "debug": false,

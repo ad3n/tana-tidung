@@ -10,9 +10,9 @@
 - { parent: null, code: 'AUDIT', name: 'Audit', sortOrder: -99, routeName: '#', showable: false, ref: 'audit' }
 - { parent: null, code: 'PORGANIZATION', name: 'Organisasi', sortOrder: 0, routeName: '#', iconClass: 'cil-bank', ref: 'organization' }
 - { parent: null, code: 'MASTER', name: 'Master', sortOrder: 1, routeName: '#', iconClass: 'cil-layers', ref: 'master' }
-- { parent: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#organization', code: 'LEVEL', name: 'Jabatan', sortOrder: 0, routeName: 'KejawenLab\Application\Controller\Level\GetAll', ref: 'organization_level' }
 - { parent: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#organization', code: 'ORGANIZATION', name: 'Skp/Opd', sortOrder: 0, routeName: 'KejawenLab\Application\Controller\Organization\GetAll', ref: 'organization_organization' }
-- { parent: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#organization', code: 'EMPLOYEE', name: 'Employee', sortOrder: 0, routeName: 'KejawenLab\Application\Controller\Employee\GetAll', ref: 'organization_employee' }
+- { parent: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#organization', code: 'LEVEL', name: 'Jabatan', sortOrder: 1, routeName: 'KejawenLab\Application\Controller\Level\GetAll', ref: 'organization_level' }
+- { parent: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#organization', code: 'EMPLOYEE', name: 'Employee', sortOrder: 2, routeName: 'KejawenLab\Application\Controller\Employee\GetAll', ref: 'organization_employee' }
 - { parent: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#master', code: 'UNIT', name: 'Unit', sortOrder: 0, routeName: 'KejawenLab\Application\Controller\Unit\GetAll', ref: 'master_unit' }
 - { parent: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#master', code: 'SOURCE', name: 'Sumber Barang', sortOrder: 0, routeName: 'KejawenLab\Application\Controller\Source\GetAll', ref: 'master_source' }
 - { parent: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#administrator', code: 'FISCALYEAR', name: 'Fiscal Year', sortOrder: 7, routeName: 'KejawenLab\Application\Controller\FiscalYear\GetAll', ref: 'administrator_fiscalyear' }
