@@ -27,7 +27,7 @@
                                 <td>1 {{ conversion.unit.name }}</td>
                                 <td>{{ conversion.factor | number_format(2, ',', '.') }} {{ data.unit.name }}</td>
                                 {% if can_edit %}<td>
-                                    <form method="post" action="{{ path('KejawenLab\\Application\\Admin\\Controller\\Item\\DeleteConversion', {id: data.id, conversionId: conversion.id}) }}" onsubmit="return confirm({{ 'sas.page.item_conversion.delete_confirm' | trans({}, 'pages') | json_encode | e('html_attr') }})">
+                                    <form method="post" action="{{ path('KejawenLab\\Application\\Admin\\Controller\\Item\\DeleteConversion', {id: data.id, conversionId: conversion.id}) }}" onsubmit="return confirm({{ 'sas.page.item_conversion.delete_confirm' | trans({}, 'pages') | json_encode | e('html_attr') }})"><input type="hidden" name="_csrf_token" value="{{ csrf_token('admin_action') }}">
                                         <button class="btn btn-sm btn-outline-danger" type="submit">{{ 'sas.page.item_conversion.delete' | trans({}, 'pages') }}</button>
                                     </form>
                                 </td>{% endif %}
@@ -57,7 +57,7 @@
                             {% endif %}
                         </div>
                     {% elseif data.unit %}
-                        {{ form_start(form) }}
+                        {{ form_start(form) }}<input type="hidden" name="_csrf_token" value="{{ csrf_token('admin_action') }}">
                         <div class="card-body">
                             {{ form_widget(form) }}
                         </div>

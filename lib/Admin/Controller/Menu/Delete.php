@@ -22,7 +22,7 @@ final class Delete extends AbstractController
     {
     }
 
-    #[Route(path: '/menus/{id}/delete', name: self::class, methods: ['GET'])]
+    #[Route(path: '/menus/{id}/delete', name: self::class, methods: ['POST'])]
     public function __invoke(string $id): Response
     {
         $menu = $this->service->get($id);

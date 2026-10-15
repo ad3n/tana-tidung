@@ -39,6 +39,7 @@ final class TransactionService
     {
         $this->access->requirePermission('view');
         $transaction = $this->reference(Transaction::class, $id);
+        $this->access->requireMenuPermission('TRANSACTION_'.$transaction->getType()->name.'_LIST', 'view');
         if (!$this->access->canView($transaction)) {
             throw new NotFoundHttpException();
         }
@@ -49,7 +50,13 @@ final class TransactionService
     public function listing(int $page = 1, string $search = '', ?Type $type = null, ?string $organizationId = null): array
     {
         $this->access->requirePermission('view');
+        $allowedTypes = array_values(array_filter(Type::cases(), fn (Type $candidate): bool => $this->access->hasMenuPermission('TRANSACTION_'.$candidate->name.'_LIST', 'view')));
+        if (!$allowedTypes || ($type && !in_array($type, $allowedTypes, true))) {
+            throw new AccessDeniedHttpException('Hak akses daftar transaksi tidak mencukupi.');
+        }
+
         $query = $this->em->createQueryBuilder()->select('t')->from(Transaction::class, 't');
+        $query->andWhere('t.type IN (:allowedTypes)')->setParameter('allowedTypes', array_map(static fn (Type $candidate): int => $candidate->value, $allowedTypes));
         if ($org = $this->access->organization()) {
             $query->andWhere('t.fromOrganization = :org OR t.toOrganization = :org')->setParameter('org', $org);
         }
@@ -129,6 +136,7 @@ final class TransactionService
                 throw new BadRequestHttpException('Jenis transaksi tidak valid.');
             }
 
+            $this->access->requireMenuPermission('TRANSACTION_'.$type->name, $id ? 'edit' : 'add');
             if ($id && $transaction->getType() !== $type) {
                 throw new ConflictHttpException('Jenis transaksi tidak dapat diubah. Buat transaksi baru.');
             }
@@ -447,6 +455,10 @@ final class TransactionService
 
     private function canPerform(Transaction $transaction, string $action): bool
     {
+        if (in_array($action, ['submit', 'send', 'receive'], true) && !$this->access->hasMenuPermission('TRANSACTION_'.$transaction->getType()->name, 'edit')) {
+            return false;
+        }
+
         if ($this->access->isOperator() && !$this->access->isAdmin() && !in_array($action, ['submit', 'send', 'receive'], true)) {
             return false;
         }
@@ -798,6 +810,7 @@ final class TransactionService
     public function stocks(?string $organizationId = null, string $search = ''): array
     {
         $this->access->requirePermission('view');
+        $this->access->requireMenuPermission('TRANSACTION_STOCK', 'view');
         $org = $this->access->organization();
         if ($org && $organizationId && $organizationId !== $org->getId()) {
             throw new AccessDeniedHttpException();
@@ -904,6 +917,7 @@ final class TransactionService
 
     private function editableOwner(Transaction $transaction): void
     {
+        $this->access->requireMenuPermission('TRANSACTION_'.$transaction->getType()->name, 'edit');
         if (Status::RETURNED !== $transaction->getStatus()) {
             throw new ConflictHttpException('Hanya transaksi yang perlu revisi dapat diubah.');
         }

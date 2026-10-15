@@ -101,7 +101,7 @@ $(function () {
     item.add(unit).add(lot).on('change', function () { document.getElementById('line-qty')?.setCustomValidity(''); });
     $('#transaction-line-form').on('submit', function (event) {
         const line = {};
-        $(this).serializeArray().forEach(field => { line[field.name] = field.value; });
+        $(this).serializeArray().forEach(field => { if (field.name !== '_csrf_token') line[field.name] = field.value; });
         const existing = create.length ? pending : read('transaction-existing-lines', []);
         if (!sufficientStock([...existing, line])) {
             event.preventDefault();
@@ -155,7 +155,7 @@ $(function () {
         $('#transaction-line-form').on('submit', function (event) {
             event.preventDefault();
             const line = {};
-            $(this).serializeArray().forEach(field => { line[field.name] = field.value; });
+            $(this).serializeArray().forEach(field => { if (field.name !== '_csrf_token') line[field.name] = field.value; });
             pending.push(line);
             renderPending();
             modal.modal('hide');

@@ -36,7 +36,7 @@ final class PermissionPut extends AbstractController
         }
 
         $permission = $this->service->get($id);
-        if (!$permission instanceof Entity) {
+        if (!$permission instanceof Entity || $permission->getGroup()->getId() !== $group->getId()) {
             $this->addFlash('error', 'sas.page.permission.not_found');
 
             return new RedirectResponse($this->generateUrl(GetPermission::class, ['id' => $groupId]));

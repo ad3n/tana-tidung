@@ -39,6 +39,10 @@ final readonly class PermissionSubscriber implements EventSubscriberInterface
 
         /** @var object $controller */
         $controller = $event->getController();
+        if (is_array($controller)) {
+            $controller = $controller[0];
+        }
+
         if (!\is_object($controller)) {
             return;
         }
@@ -56,7 +60,15 @@ final readonly class PermissionSubscriber implements EventSubscriberInterface
             throw new AccessDeniedException();
         }
 
-        $id = $event->getRequest()->attributes->get('id');
+        $request = $event->getRequest();
+        if ($request->isMethod('POST') && str_contains($controller::class, '\\Admin\\Controller\\') && str_ends_with($controller::class, '\\Main')) {
+            $editing = $request->hasSession() && null !== $request->getSession()->get('admin_edit.'.$controller::class);
+            if (!$this->authorization->authorize(new Permission($permission[0]->getMenu(), [$editing ? Permission::EDIT : Permission::ADD]))) {
+                throw new AccessDeniedException();
+            }
+        }
+
+        $id = $request->attributes->get('id');
         if (!$permission[0]->isOwnership()) {
             return;
         }

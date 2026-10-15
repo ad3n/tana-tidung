@@ -22,6 +22,7 @@ security:
                 - KejawenLab\ApiSkeleton\Security\AdminAuthenticator
             logout:
                 path: admin_logout
+                enable_csrf: true
         api_login:
             pattern:  ^/api/login
             stateless: true

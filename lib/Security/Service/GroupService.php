@@ -9,6 +9,7 @@ use KejawenLab\ApiSkeleton\Security\Model\GroupInterface;
 use KejawenLab\ApiSkeleton\Security\Model\GroupRepositoryInterface;
 use KejawenLab\ApiSkeleton\Service\AbstractService;
 use KejawenLab\ApiSkeleton\Service\Model\ServiceInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
@@ -19,6 +20,7 @@ final class GroupService extends AbstractService implements ServiceInterface
     public function __construct(
         MessageBusInterface $messageBus,
         GroupRepositoryInterface $repository,
+        #[Autowire(env: 'APP_SUPER_ADMIN')] private readonly string $superAdmin,
         AliasHelper $aliasHelper,
     ) {
         parent::__construct($messageBus, $repository, $aliasHelper);
@@ -26,6 +28,6 @@ final class GroupService extends AbstractService implements ServiceInterface
 
     public function getSuperAdmin(): ?GroupInterface
     {
-        return $this->repository->findByCode(GroupInterface::SUPER_ADMIN_CODE);
+        return $this->repository->findByCode($this->superAdmin);
     }
 }

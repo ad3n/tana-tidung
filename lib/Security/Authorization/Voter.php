@@ -42,11 +42,11 @@ final class Voter extends SymfonyVoter
         }
 
         $superAdmin = $this->groupService->getSuperAdmin();
-        if ($superAdmin->getCode() === $group->getCode()) {
+        if ($superAdmin && $superAdmin->getId() === $group->getId()) {
             return true;
         }
 
-        $permission = $this->permissionService->getPermission($group, $subject);
+        $permission = $this->permissionService->getPermission($group, $subject, false);
         if (!$permission instanceof PermissionInterface) {
             return false;
         }

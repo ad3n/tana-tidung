@@ -70,7 +70,7 @@ final class PermissionRepository extends AbstractRepository implements Permissio
         $queryBuilder->innerJoin('o.group', 'g');
         $queryBuilder->innerJoin('o.menu', 'm');
         $queryBuilder->andWhere($queryBuilder->expr()->eq('g.id', $queryBuilder->expr()->literal($group->getId())));
-        $queryBuilder->add('where', $queryBuilder->expr()->in('m.id', ':ids'));
+        $queryBuilder->andWhere($queryBuilder->expr()->in('m.id', ':ids'));
         $queryBuilder->setParameter('ids', $ids);
         $queryBuilder->addOrderBy('m.sortOrder', 'ASC');
 

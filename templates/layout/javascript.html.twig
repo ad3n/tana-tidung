@@ -1,6 +1,7 @@
 <script src="{{- preload(asset('plugins/jquery/jquery.min.js'), {as: 'javascript'}) -}}"></script>
     <script src="{{- preload(asset('plugins/bootstrap/js/bootstrap.bundle.min.js'), {as: 'javascript'}) -}}"></script>
     <script src="{{- preload(asset('dist/js/adminlte.min.js'), {as: 'javascript'}) -}}"></script>
+    <script src="{{ asset('js/admin-security.js') }}"></script>
     {{- javascripts | raw -}}
     <script>
         function getParameterByName(name, url) {

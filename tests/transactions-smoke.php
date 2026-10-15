@@ -21,9 +21,26 @@ use Symfony\Component\Dotenv\Dotenv;
 // Uses isolated test accounts and removes records created by this check.
 $base = getenv('SMOKE_BASE_URL') ?: 'http://nginx';
 
-function request(string $path, int $expected, string $method = 'GET', string $payload = '', array $headers = []): array
+function request(string $path, int $expected, string $method = 'GET', string $payload = '', array $headers = [], bool $csrf = true): array
 {
     global $base;
+
+    if ($csrf && str_starts_with($path, '/admin') && 'POST' === $method) {
+        $login = '/admin/' === $path;
+        [$page, $pageHeaders] = request($login ? '/admin/login' : '/admin/me', 200, headers: $headers);
+        preg_match('/name="_csrf_token" value="([^"]+)"/', $page, $match);
+        checkModule(isset($match[1]), 'Missing CSRF token in form');
+        parse_str($payload, $fields);
+        $fields['_csrf_token'] = html_entity_decode($match[1]);
+        $payload = http_build_query($fields);
+        if ($login) {
+            foreach ($pageHeaders as $header) {
+                if (preg_match('/^Set-Cookie:\s*([^;]+)/i', $header, $cookie)) {
+                    $headers[] = 'Cookie: '.$cookie[1];
+                }
+            }
+        }
+    }
 
     $context = stream_context_create(['http' => [
         'method' => $method,
@@ -134,6 +151,23 @@ try {
         $em->flush();
         $permissions[] = $permission;
     }
+    foreach ($em->getRepository(Menu::class)->findAll() as $auditMenu) {
+        if ('TRANSACTION' === $auditMenu->getCode()) {
+            continue;
+        }
+        foreach (['read', 'full'] as $kind) {
+            $permission = new Permission();
+            $permission->setGroup($groups[$kind]);
+            $permission->setMenu($auditMenu);
+            $permission->setViewable(true);
+            $permission->setAddable('full' === $kind);
+            $permission->setEditable('full' === $kind);
+            $permission->setDeletable('full' === $kind);
+            $em->persist($permission);
+            $permissions[] = $permission;
+        }
+    }
+    $em->flush();
     $level = new Level();
     $level->setName('Tx test '.$suffix);
     $em->persist($level);
@@ -180,6 +214,15 @@ try {
         [$login] = request('/api/login', 200, 'POST', json_encode(['username' => $user->getUsername(), 'password' => $password]), ['Content-Type: application/json']);
         $tokens[$key] = json_decode($login, true)['token'];
     }
+    apiAs('orphan', 'users', 403, 'POST', ['group' => $super->getId(), 'fullName' => 'Escalation test', 'username' => 'txescalate'.strtolower($suffix), 'email' => 'txescalate'.$suffix.'@example.test', 'plainPassword' => $password]);
+    apiAs('orphan', 'groups/'.$groups['full']->getId().'/permissions', 403, 'PUT', ['menu' => $menu->getId(), 'viewable' => false, 'addable' => false, 'editable' => false, 'deletable' => false]);
+    foreach (['levels', 'organizations', 'employees', 'units', 'sources', 'categories', 'items', 'fiscal-years', 'users', 'groups', 'menus', 'settings'] as $section) {
+        apiAs('reader', $section, 403, 'POST', []);
+        apiAs('denied', $section, 403);
+    }
+    [$warmLevels] = request('/api/levels?q='.urlencode($level->getName()), 200, headers: ['Authorization: Bearer '.$tokens['admin']]);
+    [$coldLevels] = request('/api/levels?q=NO_MATCH_'.$suffix, 200, headers: ['Authorization: Bearer '.$tokens['admin']]);
+    checkModule(str_contains($warmLevels, $level->getId()) && !str_contains($coldLevels, $level->getId()), 'Pagination cache must isolate different filters');
     $unit = new Unit();
     $unit->setCode('KG'.$suffix);
     $unit->setName('Tx Kg');
@@ -350,7 +393,13 @@ try {
     apiAs('A', 'transactions/stocks?organization_id='.$orgs['B']->getId(), 403);
     $summary = apiAs('A', 'transactions/stocks?summary=1&q='.strtolower($item->getCode()), 200)['items'];
     checkModule(1 === count($summary) && '5.000000' === $summary[0]['total'], 'Stock summary search incorrect');
-    foreach (['admin', 'apprA', 'A'] as $who) {
+    $stockPermission = $em->getRepository(Permission::class)->findOneBy(['group' => $groups['read'], 'menu' => $em->getRepository(Menu::class)->findOneBy(['code' => 'TRANSACTION_STOCK'])]);
+    $stockPermission->setViewable(false);
+    $em->flush();
+    apiAs('reader', 'transactions/stocks', 403);
+    $stockPermission->setViewable(true);
+    $em->flush();
+    foreach (['reader', 'orphan', 'admin', 'apprA', 'A'] as $who) {
         [, $headers] = request('/admin/', 302, 'POST', http_build_query(['_username' => $users[$who]->getUsername(), '_password' => $password]), ['Content-Type: application/x-www-form-urlencoded']);
         $cookies = [];
         foreach ($headers as $header) {
@@ -359,6 +408,20 @@ try {
             }
         }
         $auth = ['Cookie: '.implode('; ', $cookies), 'Content-Type: application/x-www-form-urlencoded'];
+        if (in_array($who, ['reader', 'orphan'], true)) {
+            foreach (['levels', 'organizations', 'employees', 'units', 'sources', 'categories', 'items', 'fiscal-years', 'users', 'groups', 'menus', 'settings', 'crons'] as $section) {
+                request('/admin/'.$section, 200, headers: $auth);
+                if ('reader' === $who) {
+                    request('/admin/'.$section, 403, 'POST', '', $auth);
+                }
+            }
+            request('/admin/levels/'.$level->getId().'/delete', 405, headers: $auth);
+            request('/admin/levels', 403, 'POST', '', $auth, csrf: false);
+            if ('orphan' === $who) {
+                request('/admin/groups/'.$groups['read']->getId().'/permissions/'.$permissions[0]->getId(), 302, 'POST', http_build_query(['type' => 'edit', 'value' => 'true']), $auth);
+            }
+            continue;
+        }
         if ('admin' === $who) {
             foreach (['levels', 'organizations', 'employees', 'units', 'sources', 'categories', 'items', 'fiscal-years', 'users', 'groups', 'menus', 'settings', 'crons'] as $section) {
                 [$masterHtml] = request('/admin/'.$section, 200, headers: $auth);
@@ -436,6 +499,7 @@ try {
     echo "Direct submission, revisions, roles, stock, FEFO and admin checks passed.\n";
 } finally {
     // Delete only test-owned records; never load fixtures or clear operational stock.
+    $db->executeStatement('DELETE FROM core_user WHERE username=?', ['txescalate'.strtolower($suffix)]);
     foreach ($users as $user) {
         $ids = $db->fetchFirstColumn('SELECT id FROM transactions WHERE created_by_id = ?', [$user->getId()]);
         $transactions = array_merge($transactions, $ids);

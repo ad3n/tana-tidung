@@ -86,7 +86,7 @@ final class Get extends AbstractController
 
         return $this->render($revising ? 'transaction/revision.html.twig' : 'transaction/view.html.twig', array_merge($choices, [
             'page_title' => 'transaction.detail', 'transaction' => $transaction, 'data' => $presenter->present($transaction),
-            'can_operate' => $service->access->canOperate($transaction), 'can_receive' => $service->access->canOperate($transaction, true),
+            'can_operate' => $service->access->canOperate($transaction) && $service->access->hasMenuPermission('TRANSACTION_'.$transaction->getType()->name, 'edit'), 'can_receive' => $service->access->canOperate($transaction, true),
             'revising' => $revising, 'error' => $error, 'values' => $values, 'line_values' => $lineValues,
             'stocks' => $service->access->canOperate($transaction) && $transaction->getFromOrganization() ? $service->stocks($transaction->getFromOrganization()->getId()) : [],
         ]));

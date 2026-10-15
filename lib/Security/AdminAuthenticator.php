@@ -22,6 +22,7 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Http\Authenticator\AbstractLoginFormAuthenticator;
+use Symfony\Component\Security\Http\Authenticator\Passport\Badge\CsrfTokenBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordCredentials;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
@@ -53,6 +54,7 @@ final class AdminAuthenticator extends AbstractLoginFormAuthenticator
         return new Passport(
             new UserBadge($credentials['username'], fn (string $userIdentifier): User => $this->userProviderFactory->loadUserByIdentifier($userIdentifier)),
             new PasswordCredentials($credentials['password']),
+            [new CsrfTokenBadge('admin_action', $request->getPayload()->getString('_csrf_token'))],
         );
     }
 

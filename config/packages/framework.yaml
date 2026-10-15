@@ -7,7 +7,10 @@ framework:
     translator:
         enabled: true
     secret: '%env(APP_SECRET)%'
-    csrf_protection: false
+    csrf_protection: true
+    form:
+        csrf_protection:
+            enabled: false
     http_cache: true
     #http_method_override: true
 
@@ -17,6 +20,9 @@ framework:
         cookie_lifetime: 3600
         enabled: true
         use_cookies: true
+        cookie_httponly: true
+        cookie_samesite: lax
+        cookie_secure: auto
         handler_id: Symfony\Component\HttpFoundation\Session\Storage\Handler\RedisSessionHandler
         storage_factory_id: session.storage.factory.native
     rate_limiter:

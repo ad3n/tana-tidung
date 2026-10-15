@@ -8,10 +8,8 @@ use Doctrine\ORM\OptimisticLockException;
 use Doctrine\ORM\ORMException;
 use Doctrine\Persistence\ManagerRegistry;
 use KejawenLab\ApiSkeleton\Entity\User;
-use KejawenLab\ApiSkeleton\Security\Model\GroupInterface;
 use KejawenLab\ApiSkeleton\Security\Model\UserInterface;
 use KejawenLab\ApiSkeleton\Security\Model\UserRepositoryInterface;
-use KejawenLab\ApiSkeleton\SemartApiSkeleton;
 use KejawenLab\ApiSkeleton\Util\StringUtil;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
@@ -50,34 +48,29 @@ final class UserRepository extends AbstractRepository implements PasswordUpgrade
 
     public function isSupervisor(UserInterface $user, UserInterface $supervisor): bool
     {
-        if ($user->getSupervisor() && $user->getSupervisor()->getId() === $supervisor->getId()) {
-            return true;
+        $visited = [];
+        while ($user->getSupervisor()) {
+            if (isset($visited[$user->getId()])) {
+                return false;
+            }
+
+            $visited[$user->getId()] = true;
+            $user = $user->getSupervisor();
+            if ($user->getId() === $supervisor->getId()) {
+                return true;
+            }
         }
 
-        if (null === $user->getSupervisor()) {
-            return GroupInterface::SUPER_ADMIN_CODE === $user->getGroup()->getCode();
-        }
-
-        return $this->isSupervisor($user->getSupervisor(), $supervisor);
+        return false;
     }
 
     public function findByUsername(string $username): ?UserInterface
     {
-        $deviceId = $this->getDeviceId();
-        $cacheLifetime = self::MICRO_CACHE;
-        if ('' !== $deviceId && '0' !== $deviceId) {
-            $cacheLifetime = SemartApiSkeleton::QUERY_CACHE_LIFETIME;
-        }
-
         $queryBuilder = $this->createQueryBuilder('o');
         $queryBuilder->andWhere($queryBuilder->expr()->eq('LOWER(o.username)', $queryBuilder->expr()->literal(StringUtil::lowercase($username))));
         $queryBuilder->setMaxResults(1);
 
         $query = $queryBuilder->getQuery();
-        if (!$this->isDisableCache()) {
-            $query->useQueryCache(true);
-            $query->enableResultCache($cacheLifetime, sprintf('%s_%s_%s_%s', $deviceId, sha1(self::class), sha1(__METHOD__), $username));
-        }
 
         return $query->getOneOrNullResult();
     }

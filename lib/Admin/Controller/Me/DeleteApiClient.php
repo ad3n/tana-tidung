@@ -24,7 +24,7 @@ final class DeleteApiClient extends AbstractController
     {
     }
 
-    #[Route(path: '/me/api-clients/{id}/delete', name: self::class, methods: ['GET'])]
+    #[Route(path: '/me/api-clients/{id}/delete', name: self::class, methods: ['POST'])]
     public function __invoke(Request $request, string $id): Response
     {
         $user = $this->getUser();

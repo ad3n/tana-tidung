@@ -85,6 +85,7 @@ final class Profile extends AbstractController
             }
         }
 
+        $request->attributes->set('userId', $user->getId());
         $class = new ReflectionClass($user::class);
 
         $request->query->set($this->setting->getPerPageField(), 17);

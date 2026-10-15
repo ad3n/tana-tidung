@@ -29,7 +29,7 @@
                             {% if transaction.type.value != 1 %}<small class="text-muted">{{ 'transaction.batch_pending'|trans }}</small>{% endif %}
                         {% endif %}
                     </td>
-                    {% if editable %}<td><form method="post"><input type="hidden" name="_operation" value="remove_line"><input type="hidden" name="line_id" value="{{ line.id }}"><button type="submit" class="btn btn-sm btn-outline-danger">{{ 'transaction.remove'|trans }}</button></form></td>{% endif %}
+                    {% if editable %}<td><form method="post"><input type="hidden" name="_csrf_token" value="{{ csrf_token('admin_action') }}"><input type="hidden" name="_operation" value="remove_line"><input type="hidden" name="line_id" value="{{ line.id }}"><button type="submit" class="btn btn-sm btn-outline-danger">{{ 'transaction.remove'|trans }}</button></form></td>{% endif %}
                 </tr>{% else %}<tr><td colspan="{{ (transaction.type.value == 1 ? 7 : 5) + (editable ? 1 : 0) }}">{{ 'transaction.empty_items'|trans }}</td></tr>{% endfor %}
                 </tbody></table></div>
             </div>
@@ -44,7 +44,7 @@
                         {% if action in ['return', 'cancel'] %}
                             <button type="button" class="btn btn-outline-{{ action == 'return' ? 'warning' : 'danger' }}" data-toggle="modal" data-target="#transaction-{{ action }}-modal">{{ ('transaction.action.' ~ action)|trans }}</button>
                         {% else %}
-                            <form method="post" class="transaction-action">
+                            <form method="post" class="transaction-action"><input type="hidden" name="_csrf_token" value="{{ csrf_token('admin_action') }}">
                                 <input type="hidden" name="_operation" value="{{ action }}">
                                 <button type="submit" class="btn btn-outline-primary">{{ ('transaction.action.' ~ action)|trans }}</button>
                             </form>
@@ -58,7 +58,7 @@
         {% if action in ['return', 'cancel'] %}
             <div class="modal fade" id="transaction-{{ action }}-modal" tabindex="-1" role="dialog" aria-labelledby="transaction-{{ action }}-title" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content">
-                    <form method="post">
+                    <form method="post"><input type="hidden" name="_csrf_token" value="{{ csrf_token('admin_action') }}">
                         <input type="hidden" name="_operation" value="{{ action }}">
                         <div class="modal-header">
                             <h5 class="modal-title" id="transaction-{{ action }}-title">{{ ('transaction.action.' ~ action)|trans }}</h5>

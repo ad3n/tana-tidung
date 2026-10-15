@@ -28,6 +28,7 @@ final class Main extends AbstractController
 
         $error = null;
         $type = TransactionType::from($transactionType);
+        $service->access->requireMenuPermission('TRANSACTION_'.$type->name, 'add');
         $values = ['type' => $type->value];
         if ($request->isMethod('POST')) {
             $values = array_replace($request->request->all(), ['type' => $type->value]);

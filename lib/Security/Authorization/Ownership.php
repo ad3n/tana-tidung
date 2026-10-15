@@ -6,11 +6,11 @@ namespace KejawenLab\ApiSkeleton\Security\Authorization;
 
 use Doctrine\Persistence\ManagerRegistry;
 use Exception;
-use KejawenLab\ApiSkeleton\Security\Model\GroupInterface;
 use KejawenLab\ApiSkeleton\Security\Model\UserInterface;
 use KejawenLab\ApiSkeleton\Security\Model\UserRepositoryInterface;
 use KejawenLab\ApiSkeleton\Security\Service\UserProviderFactory;
 use KejawenLab\ApiSkeleton\Security\User;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\PropertyAccess\PropertyAccessor;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
@@ -29,6 +29,7 @@ final class Ownership
         private readonly TokenStorageInterface $tokenStorage,
         private readonly UserProviderFactory $userProviderFactory,
         private readonly string $ownershipProperty,
+        #[Autowire(env: 'APP_SUPER_ADMIN')] private readonly string $superAdmin,
     ) {
     }
 
@@ -44,7 +45,7 @@ final class Ownership
         }
 
         $user = $this->userProviderFactory->getRealUser($user);
-        if (GroupInterface::SUPER_ADMIN_CODE === $user->getGroup()->getCode()) {
+        if ($user && strtoupper($this->superAdmin) === strtoupper((string) $user->getGroup()?->getCode())) {
             return true;
         }
 
@@ -86,8 +87,8 @@ final class Ownership
 
     private function getEntity(string $entity): ?string
     {
-        if (class_exists($entity = sprintf('%s\\%s', self::SKELETON_NAMESPACE, $entity))) {
-            return $entity;
+        if (class_exists($class = sprintf('%s\\%s', self::SKELETON_NAMESPACE, $entity))) {
+            return $class;
         }
 
         if (class_exists($entity = sprintf('%s\\%s', self::APPLICATION_NAMESPACE, $entity))) {

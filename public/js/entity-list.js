@@ -22,7 +22,7 @@ $(function () {
     $('#sasDeleteModal').on('show.bs.modal', function (event) {
         const button = $(event.relatedTarget);
         $('#sasNotification').text(button.attr('data-notification'));
-        $('#sasDeleteConfirm').attr('href', button.attr('data-path'));
+        $('#sasDeleteConfirm').attr('href', button.attr('data-path')).attr('data-admin-action', '');
     });
     if (modal.attr('data-auto-open') === '1') modal.modal('show');
 });

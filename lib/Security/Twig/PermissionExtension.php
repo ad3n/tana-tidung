@@ -58,7 +58,7 @@ final class PermissionExtension extends AbstractExtension
         /** @var User $user */
         $user = $token->getUser();
         $superAdmin = $this->groupService->getSuperAdmin();
-        if ($superAdmin->getCode() !== $user->getGroup()->getCode()) {
+        if (!$user instanceof User || !$superAdmin || $superAdmin->getId() !== $user->getGroup()?->getId()) {
             return false;
         }
 

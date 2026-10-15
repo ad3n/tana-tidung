@@ -62,6 +62,18 @@ final class TransactionAccess
         return $this->authorization->authorize(new Permission('TRANSACTION', [$action]));
     }
 
+    public function hasMenuPermission(string $menu, string $action): bool
+    {
+        return $this->authorization->authorize(new Permission($menu, [$action]));
+    }
+
+    public function requireMenuPermission(string $menu, string $action): void
+    {
+        if (!$this->hasMenuPermission($menu, $action)) {
+            throw new AccessDeniedHttpException('Hak akses menu tidak mencukupi.');
+        }
+    }
+
     public function canReview(Transaction $transaction): bool
     {
         if ($this->isAdmin()) {

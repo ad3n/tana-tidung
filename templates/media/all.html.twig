@@ -83,7 +83,7 @@
             {%- if is_granted('add', menu) -%}
             <div class="col-lg-6 col-md-12 col-sm-12">
                 <div class="card">
-                    <form role="form" method="post" action="{{- path('KejawenLab\\ApiSkeleton\\Admin\\Controller\\Media\\Main') -}}" enctype="multipart/form-data">
+                    <form role="form" method="post" action="{{- path('KejawenLab\\ApiSkeleton\\Admin\\Controller\\Media\\Main') -}}" enctype="multipart/form-data"><input type="hidden" name="_csrf_token" value="{{ csrf_token('admin_action') }}">
                         <div class="card-body">
                             {{- form_widget(form) -}}
                         </div>
@@ -150,7 +150,7 @@
                 });
 
                 $('#sasDeleteConfirm').on('click', function() {
-                    window.location.href = $('#sasPath').val();
+                    submitAdminAction($('#sasPath').val());
                 });
 
                 $('#sasSearch').on('click', function () {

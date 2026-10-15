@@ -3,7 +3,7 @@
 {% block content %}
     {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
     <div id="transaction-stock-error" class="alert alert-danger" role="alert" hidden></div>
-    <form method="post" id="transaction-create-form" class="mb-4">
+    <form method="post" id="transaction-create-form" class="mb-4"><input type="hidden" name="_csrf_token" value="{{ csrf_token('admin_action') }}">
         <input type="hidden" name="_operation" value="revision">
         <div class="card transaction-invoice">
             {% include 'transaction/invoice_header.html.twig' %}

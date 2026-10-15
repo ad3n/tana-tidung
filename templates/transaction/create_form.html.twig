@@ -1,6 +1,6 @@
 {% trans_default_domain 'pages' %}
 <div id="transaction-stock-error" class="alert alert-danger" role="alert" hidden></div>
-<form method="post" id="transaction-create-form" class="mb-4">
+<form method="post" id="transaction-create-form" class="mb-4"><input type="hidden" name="_csrf_token" value="{{ csrf_token('admin_action') }}">
     <div class="card transaction-invoice">
         {% include 'transaction/invoice_header.html.twig' %}
         {% include 'transaction/header_fields.html.twig' %}

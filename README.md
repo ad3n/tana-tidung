@@ -1005,3 +1005,44 @@ sebelum modal dibuka otomatis. Validasi gagal membuka kembali modal dengan
 nilai dan pesan kesalahan. Batal/tutup mereset form tambah; pada mode ubah
 atau setelah validasi gagal, halaman dimuat ulang untuk membersihkan sesi
 edit tanpa menyimpan. Select2 menggunakan modal sebagai dropdown parent.
+
+### Audit otorisasi — 15 Oktober 2026
+
+Audit mencakup inventaris 221 route admin/API, pemeriksaan handler permission,
+form CRUD, endpoint profil, alur transaksi dan pembatasan SKPD/OPD. Perbaikan:
+
+- POST pada halaman Main memerlukan ADD atau EDIT sesuai sesi edit, selain
+  izin VIEW. Pemeriksaan berlaku juga pada controller berbentuk callable array.
+- Semua mutasi admin memakai token CSRF `admin_action` (termasuk form biasa,
+  login, konversi satuan, transaksi, permission). Validasi dilakukan sebelum
+  controller; parameter token dibuang sebelum data bisnis diproses. Symfony
+  Form CSRF terpisah dinonaktifkan karena pemeriksaan terpusat ini, sementara
+  API tetap menggunakan autentikasi Bearer. Logout memakai token bawaan Symfony.
+- Action hapus dan jalankan cron pada admin hanya menerima POST. Gunakan
+  `submitAdminAction()` atau form POST bertoken; jangan membuat link GET mutasi.
+- Perubahan permission dan akun/grup superadmin hanya boleh dilakukan oleh
+  superadmin. Pengguna non-superadmin tidak boleh mengganti grupnya sendiri.
+  Penjagaan dilakukan sebelum flush Doctrine, termasuk perubahan melalui API.
+- Permission admin harus sesuai group pada URL. Query permission mempertahankan
+  filter group. Pemeriksaan otorisasi dan pemuatan akun tidak menggunakan cache
+  hasil, sehingga pencabutan hak akses tidak menunggu cache kedaluwarsa.
+- Kunci cache pagination mencakup SQL dan parameter; hasil antar daftar/filter
+  tidak bercampur. Limit dibatasi 1–100 dan halaman minimal 1.
+- Submenu transaksi juga diperiksa di server: input/revisi, daftar per jenis,
+  dan Stok Barang. Daftar gabungan API hanya memuat jenis yang boleh dilihat.
+  Pembatasan organisasi, status, peran, FEFO dan reservasi tetap diberlakukan.
+- Daftar token pada profil dibatasi ke pemiliknya. Pemeriksaan ownership tidak
+  menganggap record buatan superadmin sebagai milik pengguna lain dan rantai
+  supervisor siklik ditolak.
+
+Verifikasi menggunakan akun/record sementara pada `tests/transactions-smoke.php`
+dan unit test `tests/app/Security/`; tidak memuat ulang fixtures operasional.
+Mapping permission APPRV, OPRTR dan SPRADM diperiksa lengkap tanpa duplikat.
+`composer audit` tidak menemukan advisori kerentanan pada paket terpasang;
+`doctrine/annotations` berstatus abandoned dan masih menjadi pekerjaan migrasi.
+
+Ini merupakan audit kode dan pengujian lokal, bukan jaminan tidak ada seluruh
+jenis kerentanan. Deployment publik tetap wajib memakai APP_ENV=prod,
+APP_DEBUG=0, HTTPS, kredensial produksi yang berbeda, serta tidak mengekspos
+port database/broker. Audit infrastruktur eksternal dan penetration test
+menyeluruh belum dilakukan.

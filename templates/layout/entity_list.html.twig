@@ -45,7 +45,7 @@
     {% if can_form %}
         <div class="modal fade" id="entityFormModal" tabindex="-1" role="dialog" aria-labelledby="entityFormTitle" aria-hidden="true" data-auto-open="{{ editing or app.request.method == 'POST' ? '1' : '0' }}" data-reset-url="{{ editing or app.request.method == 'POST' ? list_url : '' }}">
             <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
-                <form id="entityForm" method="post" action="{{ list_url }}" enctype="multipart/form-data" class="modal-content">
+                <form id="entityForm" method="post" action="{{ list_url }}" enctype="multipart/form-data" class="modal-content"><input type="hidden" name="_csrf_token" value="{{ csrf_token('admin_action') }}">
                     <div class="modal-header"><h5 class="modal-title" id="entityFormTitle">{{ (editing ? 'entity.edit' : 'entity.add')|trans({}, 'pages') }} — {{ page_title|trans({}, 'pages') }}</h5><button type="button" class="close" data-dismiss="modal" aria-label="{{ 'entity.close'|trans({}, 'pages') }}"><span aria-hidden="true">&times;</span></button></div>
                     <div class="modal-body">{{ form_widget(form) }}</div>
                     <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">{{ 'sas.form.action.cancel'|trans({}, 'forms') }}</button><button type="submit" class="btn btn-outline-primary">{{ 'sas.form.action.submit'|trans({}, 'forms') }}</button></div>
@@ -64,7 +64,7 @@
 {% block javascripts %}
     <script src="{{ asset('plugins/toastr/toastr.min.js') }}"></script>
     <script src="{{ asset('plugins/select2/js/select2.full.min.js') }}"></script>
-    <script src="{{ asset('js/entity-list.js') }}"></script>
+    <script src="{{ asset('js/entity-list.js') ~ '?v=20261015-security-1' }}"></script>
     <script>
         $(function () {
             toastr.options.positionClass = 'toast-top-center';

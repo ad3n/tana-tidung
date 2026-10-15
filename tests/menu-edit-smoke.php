@@ -12,6 +12,8 @@ $base = getenv('SMOKE_BASE_URL') ?: 'http://nginx';
 function request(string $path, int $expected, string $method = 'GET', string $payload = '', array $headers = []): array
 {
     global $base;
+    require_once __DIR__.'/admin-csrf.php';
+    [$payload, $headers] = prepareAdminCsrf($path, $method, $payload, $headers);
 
     $context = stream_context_create(['http' => [
         'method' => $method,
