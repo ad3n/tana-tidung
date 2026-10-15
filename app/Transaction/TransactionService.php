@@ -6,6 +6,7 @@ namespace KejawenLab\Application\Transaction;
 
 use Brick\Math\BigDecimal;
 use Brick\Math\Exception\MathException;
+use Brick\Math\RoundingMode;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use KejawenLab\Application\Entity\FiscalYear;
@@ -74,7 +75,28 @@ final class TransactionService
         $total = (clone $query)->select('COUNT(t.id)')->getQuery()->getSingleScalarResult();
         $rows = $query->orderBy('t.createdAt', 'DESC')->addOrderBy('t.id', 'DESC')->setFirstResult((max(1, $page) - 1) * 25)->setMaxResults(25)->getQuery()->getResult();
 
-        return ['items' => $rows, 'total' => (int) $total, 'page' => max(1, $page)];
+        $amounts = [];
+        foreach ($rows as $transaction) {
+            if (Type::RECEIPT === $transaction->getType()) {
+                $amounts[$transaction->getId()] = $this->receiptAmount($transaction);
+            }
+        }
+
+        return ['items' => $rows, 'total' => (int) $total, 'page' => max(1, $page), 'amounts' => $amounts];
+    }
+
+    private function receiptAmount(Transaction $transaction): array
+    {
+        $total = BigDecimal::of(0);
+        foreach ($this->lines($transaction) as $line) {
+            if (null === $line->getPrice()) {
+                return ['value' => null, 'estimated' => false];
+            }
+
+            $total = $total->plus(BigDecimal::of($line->getQty())->multipliedBy($line->getPrice()));
+        }
+
+        return ['value' => (string) $total->toScale(2, RoundingMode::HalfUp), 'estimated' => false];
     }
 
     public function lines(Transaction $transaction): array
@@ -254,7 +276,7 @@ final class TransactionService
 
                 $lineId = $line['line_id'] ?? null;
                 unset($line['line_id']);
-                $this->keys($line, ['item_id', 'unit_id', 'qty', 'batch_number', 'expiry_date', 'stock_lot_id']);
+                $this->keys($line, ['item_id', 'unit_id', 'qty', 'price', 'batch_number', 'expiry_date', 'stock_lot_id']);
                 if (null !== $lineId) {
                     if (!is_string($lineId) || !isset($existing[$lineId]) || isset($retained[$lineId])) {
                         throw new BadRequestHttpException('Referensi detail barang tidak valid.');
@@ -263,7 +285,7 @@ final class TransactionService
                     $old = $existing[$lineId];
                     $original = [
                         'item_id' => $old->getItem()->getId(), 'unit_id' => $old->getUnit()->getId(),
-                        'qty' => $old->getQty(), 'batch_number' => $old->getBatchNumber(),
+                        'qty' => $old->getQty(), 'price' => $old->getPrice(), 'batch_number' => $old->getBatchNumber(),
                         'expiry_date' => $old->getExpiryDate()?->format('Y-m-d'),
                         'stock_lot_id' => $old->getSelectedLot()?->getId(),
                     ];
@@ -302,7 +324,7 @@ final class TransactionService
     {
         $this->access->requirePermission('edit');
         $this->locked(function () use ($id, $input): void {
-            $this->keys($input, ['item_id', 'unit_id', 'qty', 'batch_number', 'expiry_date', 'stock_lot_id']);
+            $this->keys($input, ['item_id', 'unit_id', 'qty', 'price', 'batch_number', 'expiry_date', 'stock_lot_id']);
             $transaction = $this->get($id);
             $this->em->refresh($transaction);
             $this->editableOwner($transaction);
@@ -310,6 +332,15 @@ final class TransactionService
             $unit = $this->reference(Unit::class, $this->text($input, 'unit_id'));
             if (!$item->getUnit() || !in_array($item->getUnit()->getType(), Unit::TYPES, true)) {
                 throw new BadRequestHttpException('Lengkapi satuan dasar dan jenis satuan barang terlebih dahulu.');
+            }
+
+            $price = $this->text($input, 'price');
+            if (Type::RECEIPT === $transaction->getType() && '' === $price) {
+                throw new BadRequestHttpException('Harga satuan wajib diisi untuk penerimaan.');
+            }
+
+            if ('' !== $price && (Type::RECEIPT !== $transaction->getType() || !preg_match('/^\d{1,18}(\.\d{1,2})?$/D', $price))) {
+                throw new BadRequestHttpException('Harga satuan hanya untuk penerimaan, tidak boleh negatif, maksimal 18 digit dan 2 angka desimal.');
             }
 
             $qty = $this->decimal($this->text($input, 'qty'));
@@ -335,6 +366,7 @@ final class TransactionService
             $line->setItem($item);
             $line->setUnit($unit);
             $line->setQty($qty);
+            $line->setPrice('' === $price ? null : (string) BigDecimal::of($price)->toScale(2));
             $line->setConversionFactor($factor);
             $line->setBaseUnit($item->getUnit());
             $line->setBaseQty($baseQty);
@@ -460,6 +492,10 @@ final class TransactionService
             }
 
             if (in_array($action, ['cancel', 'return'], true)) {
+                if ('cancel' === $action && Type::TRANSFER === $transaction->getType() && Status::APPROVED === $transaction->getStatus()) {
+                    $this->moveReservedStock($transaction, 'AVAILABLE', 'release');
+                }
+
                 $transaction->setStatus('cancel' === $action ? Status::CANCELLED : Status::RETURNED);
                 if ('cancel' === $action) {
                     $transaction->setCancelledAt(new DateTimeImmutable());
@@ -513,7 +549,21 @@ final class TransactionService
 
             if ('submit' === $action || ('approve' === $action && Type::TRANSFER === $transaction->getType())) {
                 $this->validateStock($transaction);
+                if ('approve' === $action) {
+                    $this->reserveTransfer($transaction);
+                }
+
                 $transaction->setStatus('submit' === $action ? Status::SUBMITTED : Status::APPROVED);
+                $transaction->recordTransition($action, $this->access->account());
+
+                return;
+            }
+
+            if ('send' === $action) {
+                $this->moveReservedStock($transaction, 'IN_TRANSIT', 'send');
+                $transaction->setStatus(Status::SENT);
+                $transaction->setPostedBy($this->access->account());
+                $transaction->setPostedAt(new DateTimeImmutable());
                 $transaction->recordTransition($action, $this->access->account());
 
                 return;
@@ -550,10 +600,6 @@ final class TransactionService
                         $amount = $remaining->isLessThan($stock['qty']) ? $remaining : BigDecimal::of($stock['qty']);
                         $allocation = $this->allocation($line, $this->reference(StockLot::class, $stock['id']), (string) $amount);
                         $this->movement($allocation, $transaction->getFromOrganization(), 'AVAILABLE', 'post', (string) $amount->negated());
-                        if (Type::TRANSFER === $transaction->getType()) {
-                            $this->movement($allocation, $transaction->getFromOrganization(), 'IN_TRANSIT', 'post', (string) $amount);
-                        }
-
                         $remaining = $remaining->minus($amount);
                         if ($remaining->isZero()) {
                             break;
@@ -568,11 +614,100 @@ final class TransactionService
                 $this->em->flush();
             }
 
-            $transaction->setStatus('send' === $action ? Status::SENT : Status::COMPLETED);
+            $transaction->setStatus(Status::COMPLETED);
             $transaction->setPostedBy($this->access->account());
             $transaction->setPostedAt(new DateTimeImmutable());
             $transaction->recordTransition($action, $this->access->account());
         });
+    }
+
+    public function reserveApprovedTransfers(): int
+    {
+        return $this->locked(function (): int {
+            $count = 0;
+            $transactions = $this->em->getRepository(Transaction::class)->findBy(['type' => Type::TRANSFER, 'status' => Status::APPROVED], ['createdAt' => 'ASC', 'id' => 'ASC']);
+            foreach ($transactions as $transaction) {
+                $reserved = $this->em->getConnection()->fetchOne("SELECT COUNT(*) FROM stock_movements m JOIN transaction_item_allocations a ON a.id=m.allocation_id JOIN transaction_items i ON i.id=a.transaction_item_id WHERE i.transaction_id=? AND m.phase='reserve'", [$transaction->getId()]);
+                if ($reserved) {
+                    continue;
+                }
+
+                $this->reserveTransfer($transaction);
+                ++$count;
+            }
+
+            return $count;
+        });
+    }
+
+    private function reserveTransfer(Transaction $transaction): void
+    {
+        $lines = $this->lines($transaction);
+        if (!$lines) {
+            throw new ConflictHttpException('Transfer tidak memiliki detail barang untuk dicadangkan.');
+        }
+
+        usort($lines, static fn ($a, $b) => (int) (null !== $b->getSelectedLot()) <=> (int) (null !== $a->getSelectedLot()));
+        foreach ($lines as $line) {
+            if (null !== $line->getItem()->getDeletedAt() || null !== $line->getBaseUnit()->getDeletedAt()) {
+                throw new ConflictHttpException('Barang atau satuan sudah dihapus.');
+            }
+
+            if ($this->em->getRepository(TransactionItemAllocation::class)->findOneBy(['transactionItem' => $line])) {
+                throw new ConflictHttpException('Transfer sudah memiliki alokasi batch.');
+            }
+
+            $remaining = BigDecimal::of($line->getBaseQty());
+            foreach ($this->availableLots($transaction, $line->getItem(), $line->getSelectedLot()?->getId()) as $stock) {
+                $amount = $remaining->isLessThan($stock['qty']) ? $remaining : BigDecimal::of($stock['qty']);
+                $allocation = $this->allocation($line, $this->reference(StockLot::class, $stock['id']), (string) $amount);
+                $this->movement($allocation, $transaction->getFromOrganization(), 'AVAILABLE', 'reserve', (string) $amount->negated());
+                $this->movement($allocation, $transaction->getFromOrganization(), 'RESERVED', 'reserve', (string) $amount);
+                $remaining = $remaining->minus($amount);
+                if ($remaining->isZero()) {
+                    break;
+                }
+            }
+
+            if (!$remaining->isZero()) {
+                throw new ConflictHttpException('Stok tersedia tidak mencukupi untuk mencadangkan transfer.');
+            }
+
+            $this->em->flush();
+        }
+    }
+
+    private function moveReservedStock(Transaction $transaction, string $destination, string $phase): void
+    {
+        foreach ($this->lines($transaction) as $line) {
+            $total = BigDecimal::of(0);
+            foreach ($this->em->getRepository(TransactionItemAllocation::class)->findBy(['transactionItem' => $line]) as $allocation) {
+                $reserved = $this->em->getConnection()->fetchOne("SELECT COALESCE(SUM(quantity_delta),0) FROM stock_movements WHERE allocation_id=? AND organization_id=? AND location='RESERVED'", [$allocation->getId(), $transaction->getFromOrganization()->getId()]);
+                if (!BigDecimal::of($reserved)->isEqualTo($allocation->getBaseQty())) {
+                    throw new ConflictHttpException('Cadangan stok transfer tidak lengkap.');
+                }
+
+                if ('send' === $phase) {
+                    $expiry = $allocation->getStockLot()->getExpiryDate();
+                    $cutoff = max(new DateTimeImmutable('today'), $transaction->getDate());
+                    if ($expiry && $expiry < $cutoff) {
+                        throw new ConflictHttpException('Batch yang dicadangkan sudah kedaluwarsa. Batalkan transfer untuk melepas cadangan.');
+                    }
+
+                    if (null !== $line->getItem()->getDeletedAt() || null !== $line->getBaseUnit()->getDeletedAt()) {
+                        throw new ConflictHttpException('Barang atau satuan sudah dihapus.');
+                    }
+                }
+
+                $this->movement($allocation, $transaction->getFromOrganization(), 'RESERVED', $phase, '-'.$allocation->getBaseQty());
+                $this->movement($allocation, $transaction->getFromOrganization(), $destination, $phase, $allocation->getBaseQty());
+                $total = $total->plus($allocation->getBaseQty());
+            }
+
+            if (!$total->isEqualTo($line->getBaseQty())) {
+                throw new ConflictHttpException('Alokasi cadangan transfer tidak sesuai jumlah barang.');
+            }
+        }
     }
 
     private function allocation(TransactionItem $line, StockLot $lot, string $qty): TransactionItemAllocation
@@ -702,11 +837,15 @@ final class TransactionService
                 $summary[$key] = [
                     'item_id' => $stock['item_id'], 'item_code' => $stock['item_code'],
                     'item' => $stock['item'], 'unit_id' => $stock['unit_id'], 'unit' => $stock['unit'],
-                    'available' => '0.000000', 'in_transit' => '0.000000', 'total' => '0.000000', 'batches' => [],
+                    'available' => '0.000000', 'reserved' => '0.000000', 'in_transit' => '0.000000', 'total' => '0.000000', 'batches' => [],
                 ];
             }
 
-            $column = 'AVAILABLE' === $stock['location'] ? 'available' : 'in_transit';
+            $column = match ($stock['location']) {
+                'AVAILABLE' => 'available',
+                'RESERVED' => 'reserved',
+                'IN_TRANSIT' => 'in_transit',
+            };
             $summary[$key][$column] = (string) BigDecimal::of($summary[$key][$column])->plus($stock['qty']);
             $summary[$key]['total'] = (string) BigDecimal::of($summary[$key]['total'])->plus($stock['qty']);
             $summary[$key]['batches'][] = $stock;

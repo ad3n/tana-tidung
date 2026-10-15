@@ -219,7 +219,7 @@ try {
     request('/api/transactions', 401);
     apiAs('orphan', 'transactions', 403);
     apiAs('denied', 'transactions', 403);
-    $lineData = ['item_id' => $item->getId(), 'unit_id' => $pack->getId(), 'qty' => '2', 'expiry_date' => date('Y-m-d', strtotime(max($date, date('Y-m-d')).' +100 days')), 'batch_number' => 'LOT-'.$suffix];
+    $lineData = ['item_id' => $item->getId(), 'unit_id' => $pack->getId(), 'qty' => '2', 'price' => '125000.50', 'expiry_date' => date('Y-m-d', strtotime(max($date, date('Y-m-d')).' +100 days')), 'batch_number' => 'LOT-'.$suffix];
     $receiptData = ['type' => 1, 'date' => $date, 'source_id' => $source->getId(), 'reference_number' => 'INV-'.$suffix, 'items' => [$lineData]];
     apiAs('reader', 'transactions', 403, 'POST', $receiptData);
     apiAs('apprA', 'transactions', 403, 'POST', $receiptData);
@@ -230,10 +230,20 @@ try {
         apiAs('A', 'transactions', 400, 'POST', array_replace($receiptData, ['items' => $invalidLines]));
         checkModule($before === (int) $db->fetchOne('SELECT COUNT(*) FROM transactions'), 'Invalid submission left partial transaction');
     }
+    foreach (['', '   ', '-1', '1.001', '1000000000000000000.00', 'abc'] as $invalidPrice) {
+        apiAs('A', 'transactions', 400, 'POST', array_replace($receiptData, ['items' => [array_replace($lineData, ['price' => $invalidPrice])]]));
+    }
     apiAs('A', 'transactions', 400, 'POST', array_replace($receiptData, ['reference_number' => '']));
     $receipt = newTransaction('A', $receiptData);
+    apiAs('A', 'transactions', 400, 'POST', array_replace($receiptData, ['items' => [array_diff_key($lineData, ['price' => true])]]));
+    $zeroPrice = newTransaction('A', array_replace($receiptData, ['items' => [array_replace($lineData, ['price' => '0.00'])]]));
+    checkModule('0.00' === $zeroPrice['items'][0]['price'], 'Zero receipt price failed');
+    $receiptList = apiAs('A', 'transactions?q='.$receipt['code'], 200);
+    checkModule(['value' => '250001.00', 'estimated' => false] === $receiptList['amounts'][$receipt['id']], 'Receipt total incorrect');
     $r = 'transactions/'.$receipt['id'];
     checkModule(5 === $receipt['status'] && ['submit'] === array_column($receipt['workflow_history'], 'action'), 'Input did not submit atomically');
+    checkModule('125000.50' === $receipt['items'][0]['price'], 'Receipt price not saved exactly');
+    checkModule('250001.00' === $receipt['items'][0]['total'], 'Receipt line total must use input quantity and unit price');
     checkModule('50.000000' === $receipt['items'][0]['base_qty'], 'Conversion snapshot incorrect');
     checkModule('0.000000' === stockQty('A', $orgs['A']->getId(), $item->getId()), 'Submission affected stock');
     apiAs('A', $r.'/verify', 403, 'POST');
@@ -246,30 +256,50 @@ try {
     checkModule(7 === $returned['status'], 'Revision request failed');
     apiAs('apprA', $r, 403, 'PUT', $receiptData);
     $retained = $returned['items'][0];
-    $kept = ['line_id' => $retained['id'], 'item_id' => $retained['item_id'], 'unit_id' => $retained['unit_id'], 'qty' => $retained['qty'], 'batch_number' => $retained['batch_number'], 'expiry_date' => $retained['expiry_date'], 'stock_lot_id' => $retained['stock_lot_id']];
+    $kept = ['line_id' => $retained['id'], 'item_id' => $retained['item_id'], 'unit_id' => $retained['unit_id'], 'qty' => $retained['qty'], 'price' => $retained['price'], 'batch_number' => $retained['batch_number'], 'expiry_date' => $retained['expiry_date'], 'stock_lot_id' => $retained['stock_lot_id']];
     apiAs('A', $r, 400, 'PUT', array_replace($receiptData, ['reference_number' => 'INVALID', 'items' => [$kept, array_replace($lineData, ['qty' => '0'])]]));
     $unchanged = apiAs('A', $r, 200);
     checkModule(7 === $unchanged['status'] && $unchanged['reference_number'] === $receipt['reference_number'] && 1 === count($unchanged['items']), 'Invalid revision was not rolled back');
     $db->update('item_unit_conversions', ['factor' => '30'], ['id' => $conversion->getId()]);
     $revised = apiAs('A', $r, 200, 'PUT', array_replace($receiptData, ['reference_number' => 'REVISED-'.$suffix, 'items' => [$kept]]));
     checkModule(5 === $revised['status'] && '50.000000' === $revised['items'][0]['base_qty'], 'Revision did not resubmit or changed snapshot');
+    checkModule('125000.50' === $revised['items'][0]['price'], 'Revision lost receipt price');
     $db->update('item_unit_conversions', ['factor' => '25'], ['id' => $conversion->getId()]);
     checkModule(3 === apiAs('apprA', $r.'/verify', 200, 'POST')['status'], 'Receipt approval failed');
     apiAs('apprA', $r.'/verify', 409, 'POST');
     checkModule('50.000000' === stockQty('A', $orgs['A']->getId(), $item->getId()), 'Receipt stock incorrect');
-    $second = newTransaction('A', array_replace($receiptData, ['items' => [array_replace($lineData, ['unit_id' => $unit->getId(), 'qty' => '10', 'batch_number' => '', 'expiry_date' => date('Y-m-d', strtotime($lineData['expiry_date'].' +10 days'))])]]));
+    $second = newTransaction('A', array_replace($receiptData, ['items' => [array_replace($lineData, ['unit_id' => $unit->getId(), 'qty' => '10', 'price' => '25000.25', 'batch_number' => '', 'expiry_date' => date('Y-m-d', strtotime($lineData['expiry_date'].' +10 days'))])]]));
     $second = apiAs('admin', 'transactions/'.$second['id'].'/verify', 200, 'POST');
     checkModule(str_starts_with($second['items'][0]['batch_number'], 'BATCH'), 'Automatic batch missing');
     $transferData = ['type' => 2, 'date' => $date, 'to_organization_id' => $orgs['B']->getId(), 'reference_number' => 'SK-'.$suffix, 'items' => [['item_id' => $item->getId(), 'unit_id' => $unit->getId(), 'qty' => '55']]];
     apiAs('A', 'transactions', 409, 'POST', array_replace($transferData, ['items' => [array_replace($transferData['items'][0], ['qty' => '61'])]]));
+    apiAs('A', 'transactions', 400, 'POST', array_replace($transferData, ['items' => [array_replace($transferData['items'][0], ['price' => '1.00'])]]));
     $transfer = newTransaction('A', $transferData);
+    $transferList = apiAs('A', 'transactions?q='.$transfer['code'], 200);
+    checkModule(!isset($transferList['amounts'][$transfer['id']]), 'Non-receipt list must not calculate monetary totals');
     $t = 'transactions/'.$transfer['id'];
     apiAs('A', $t.'/approve', 403, 'POST');
     apiAs('A', $t.'/send', 409, 'POST');
     apiAs('apprB', $t.'/approve', 403, 'POST');
-    apiAs('apprA', $t.'/approve', 200, 'POST');
+    $competingTransfer = newTransaction('A', array_replace($transferData, ['items' => [array_replace($transferData['items'][0], ['qty' => '10'])]]));
+    $competingDisposal = newTransaction('A', ['type' => 3, 'date' => $date, 'notes' => 'Rusak', 'items' => [array_replace($transferData['items'][0], ['qty' => '6'])]]);
+    $approvedTransfer = apiAs('apprA', $t.'/approve', 200, 'POST');
+    checkModule('5.000000' === stockQty('A', $orgs['A']->getId(), $item->getId()), 'Approval did not reduce available stock');
+    checkModule('55.000000' === stockQty('A', $orgs['A']->getId(), $item->getId(), 'RESERVED'), 'Approval did not reserve stock');
+    $reservedSummary = apiAs('A', 'transactions/stocks?summary=1', 200)['items'][0];
+    checkModule('55.000000' === $reservedSummary['reserved'] && '60.000000' === $reservedSummary['total'], 'Reserved stock summary incorrect');
+    apiAs('apprA', $t.'/approve', 409, 'POST');
+    apiAs('apprA', 'transactions/'.$competingTransfer['id'].'/approve', 409, 'POST');
+    apiAs('apprA', 'transactions/'.$competingDisposal['id'].'/approve', 409, 'POST');
+    checkModule('55.000000' === stockQty('A', $orgs['A']->getId(), $item->getId(), 'RESERVED'), 'Competing disposal consumed reserved stock');
+    apiAs('A', 'transactions', 409, 'POST', array_replace($transferData, ['items' => [array_replace($transferData['items'][0], ['qty' => '6'])]]));
     apiAs('apprA', $t.'/send', 403, 'POST');
     $sent = apiAs('A', $t.'/send', 200, 'POST');
+    $sentList = apiAs('A', 'transactions?q='.$transfer['code'], 200);
+    checkModule(!isset($sentList['amounts'][$transfer['id']]), 'Non-receipt list must not calculate monetary totals');
+    checkModule($approvedTransfer['items'][0]['allocations'] === $sent['items'][0]['allocations'], 'Send changed reserved batch allocations');
+    checkModule('0.000000' === stockQty('A', $orgs['A']->getId(), $item->getId(), 'RESERVED'), 'Send did not consume reservation');
+    apiAs('A', $t.'/send', 409, 'POST');
     checkModule(2 === count($sent['items'][0]['allocations']), 'FEFO did not span two batches');
     checkModule('5.000000' === stockQty('A', $orgs['A']->getId(), $item->getId()), 'FEFO available balance incorrect');
     checkModule('55.000000' === stockQty('A', $orgs['A']->getId(), $item->getId(), 'IN_TRANSIT'), 'Transit balance incorrect');
@@ -282,6 +312,8 @@ try {
     $d = 'transactions/'.$disposal['id'];
     apiAs('B', $d.'/approve', 403, 'POST');
     checkModule(3 === apiAs('apprB', $d.'/approve', 200, 'POST')['status'], 'Disposal approval did not complete immediately');
+    $disposalList = apiAs('B', 'transactions?q='.$disposal['code'], 200);
+    checkModule(!isset($disposalList['amounts'][$disposal['id']]), 'Non-receipt list must not calculate monetary totals');
     apiAs('B', $d.'/post', 403, 'POST');
     apiAs('apprB', $d.'/approve', 409, 'POST');
     checkModule('50.000000' === stockQty('B', $orgs['B']->getId(), $item->getId()), 'Disposal balance incorrect');
@@ -290,7 +322,31 @@ try {
     apiAs('apprB', 'transactions/'.$pendingOne['id'].'/approve', 200, 'POST');
     apiAs('apprB', 'transactions/'.$pendingTwo['id'].'/approve', 409, 'POST');
     checkModule(5 === apiAs('B', 'transactions/'.$pendingTwo['id'], 200)['status'], 'Insufficient stock changed submitted status');
+    $insufficientList = apiAs('B', 'transactions?q='.$pendingTwo['code'], 200);
+    checkModule(!isset($insufficientList['amounts'][$pendingTwo['id']]), 'Non-receipt list must not calculate monetary totals');
     checkModule('20.000000' === stockQty('B', $orgs['B']->getId(), $item->getId()), 'Failed approval did not roll back stock');
+    $cancelTransfer = newTransaction('B', array_replace($transferData, ['to_organization_id' => $orgs['A']->getId(), 'items' => [array_replace($transferData['items'][0], ['qty' => '10'])]]));
+    $cancelPath = 'transactions/'.$cancelTransfer['id'];
+    apiAs('apprB', $cancelPath.'/approve', 200, 'POST');
+    checkModule('10.000000' === stockQty('B', $orgs['B']->getId(), $item->getId()), 'Cancel scenario reservation missing');
+    apiAs('B', $cancelPath.'/cancel', 403, 'POST', ['note' => 'Not allowed']);
+    apiAs('admin', $cancelPath.'/cancel', 200, 'POST', ['note' => 'Transfer dibatalkan']);
+    checkModule('20.000000' === stockQty('B', $orgs['B']->getId(), $item->getId()), 'Cancellation did not restore available stock');
+    checkModule('0.000000' === stockQty('B', $orgs['B']->getId(), $item->getId(), 'RESERVED'), 'Cancellation left reserved stock');
+    apiAs('admin', $cancelPath.'/cancel', 409, 'POST', ['note' => 'Repeat']);
+    apiAs('B', $cancelPath.'/send', 409, 'POST');
+    $expiryTransfer = newTransaction('B', array_replace($transferData, ['to_organization_id' => $orgs['A']->getId(), 'items' => [array_replace($transferData['items'][0], ['qty' => '2'])]]));
+    $expiryPath = 'transactions/'.$expiryTransfer['id'];
+    $expiryApproved = apiAs('apprB', $expiryPath.'/approve', 200, 'POST');
+    $expiryLot = $expiryApproved['items'][0]['allocations'][0]['stock_lot_id'];
+    $previousExpiry = $db->fetchOne('SELECT expiry_date FROM stock_lots WHERE id=?', [$expiryLot]);
+    $db->update('stock_lots', ['expiry_date' => date('Y-m-d', strtotime('-1 day'))], ['id' => $expiryLot]);
+    apiAs('B', $expiryPath.'/send', 409, 'POST');
+    checkModule('2.000000' === stockQty('B', $orgs['B']->getId(), $item->getId(), 'RESERVED'), 'Rejected send lost reservation');
+    apiAs('admin', $expiryPath.'/cancel', 200, 'POST', ['note' => 'Batch kedaluwarsa']);
+    checkModule('20.000000' === stockQty('B', $orgs['B']->getId(), $item->getId()), 'Expired reservation could not be released');
+    $db->update('stock_lots', ['expiry_date' => $previousExpiry], ['id' => $expiryLot]);
+
     apiAs('A', 'transactions/stocks?organization_id='.$orgs['B']->getId(), 403);
     $summary = apiAs('A', 'transactions/stocks?summary=1&q='.strtolower($item->getCode()), 200)['items'];
     checkModule(1 === count($summary) && '5.000000' === $summary[0]['total'], 'Stock summary search incorrect');
@@ -303,12 +359,52 @@ try {
             }
         }
         $auth = ['Cookie: '.implode('; ', $cookies), 'Content-Type: application/x-www-form-urlencoded'];
+        if ('admin' === $who) {
+            foreach (['levels', 'organizations', 'employees', 'units', 'sources', 'categories', 'items', 'fiscal-years', 'users', 'groups', 'menus', 'settings', 'crons'] as $section) {
+                [$masterHtml] = request('/admin/'.$section, 200, headers: $auth);
+                checkModule(str_contains($masterHtml, 'table entity-list-table') && str_contains($masterHtml, 'id="entityFormModal"'), 'Missing standard table/modal: '.$section);
+                checkModule(str_contains($masterHtml, 'data-auto-open="0"') && str_contains($masterHtml, 'name="q"'), 'Unexpected modal/search state: '.$section);
+                if (getenv('SIBAPER_UI_PREVIEW') && in_array($section, ['groups', 'employees'], true)) {
+                    file_put_contents('/tmp/sibaper-'.$section.'-preview.html', $masterHtml);
+                }
+                $document = new DOMDocument();
+                @$document->loadHTML($masterHtml);
+                $xpath = new DOMXPath($document);
+                $headersCount = $xpath->query('//table[contains(@class,"entity-list-table")]/thead/tr/th')->length;
+                foreach ($xpath->query('//table[contains(@class,"entity-list-table")]/tbody/tr') as $row) {
+                    checkModule($row->childNodes->length > 0, 'Empty table row');
+                    $cells = $xpath->query('./td', $row);
+                    checkModule($cells->length === $headersCount || (1 === $cells->length && (int) $cells->item(0)->getAttribute('colspan') === $headersCount), 'Misaligned table columns: '.$section);
+                }
+            }
+            [$searchHtml] = request('/admin/groups?q='.urlencode($groups['full']->getCode()), 200, headers: $auth);
+            checkModule(str_contains($searchHtml, $groups['full']->getCode()) && !str_contains($searchHtml, $groups['read']->getCode()), 'Group search regression');
+            request('/admin/groups/'.$groups['full']->getId().'/edit?q=test', 302, headers: $auth);
+            [$editHtml] = request('/admin/groups?q=test', 200, headers: $auth);
+            checkModule(str_contains($editHtml, 'data-auto-open="1"') && str_contains($editHtml, 'value="'.$groups['full']->getName().'"'), 'Edit must open populated modal');
+            $editedName = 'Modal '.ucfirst(strtolower($suffix));
+            request('/admin/groups?q=test', 303, 'POST', http_build_query(['group' => ['code' => $groups['full']->getCode(), 'name' => $editedName]]), $auth);
+            checkModule($editedName === $db->fetchOne('SELECT name FROM core_group WHERE id=?', [$groups['full']->getId()]), 'Modal save did not update group');
+            [$resetHtml] = request('/admin/groups?q=test', 200, headers: $auth);
+            checkModule(str_contains($resetHtml, 'data-auto-open="0"') && !str_contains($resetHtml, 'value="'.$groups['full']->getName().'"'), 'Cancel must clear edit form');
+            request('/admin/groups/'.$groups['full']->getId().'/edit?q=test', 302, headers: $auth);
+            request('/admin/groups?q=test', 200, headers: $auth);
+            [$cancelledHtml] = request('/admin/groups?q=test', 200, headers: $auth);
+            checkModule(str_contains($cancelledHtml, 'data-auto-open="0"'), 'Cancel must close edit mode');
+            [$pageHtml] = request('/admin/groups?page=2', 200, headers: $auth);
+            checkModule(str_contains($pageHtml, 'table entity-list-table'), 'Pagination failed');
+            [$invalidHtml] = request('/admin/groups', 200, 'POST', http_build_query(['group' => ['code' => '', 'name' => '']]), $auth);
+            checkModule(str_contains($invalidHtml, 'data-auto-open="1"') && str_contains($invalidHtml, 'invalid-feedback'), 'Validation errors must reopen modal');
+            request('/admin/groups', 200, headers: $auth);
+        }
         foreach (['receipts', 'transfers', 'disposals'] as $section) {
             [$html] = request('/admin/transactions/'.$section, 'apprA' === $who ? 403 : 200, headers: $auth);
             if ('apprA' !== $who) {
+                checkModule(str_contains($html, 'id="line-price"') === ('receipts' === $section), 'Price input must only appear for receipts');
                 checkModule(str_contains($html, '>Ajukan</button>') && !str_contains($html, '>Simpan</button>'), 'Input button not Ajukan');
             }
             [$listHtml] = request('/admin/transactions/'.$section.'/list', 200, headers: $auth);
+            checkModule(str_contains($listHtml, '>Total</th>') === ('receipts' === $section), 'Total column must only appear in receipt list');
             checkModule(str_contains($listHtml, 'id="transaction-list-organization"') === ('admin' === $who), 'List filter visibility incorrect');
             if ('apprA' === $who) {
                 checkModule(!preg_match('~href="/admin/transactions/(receipts|transfers|disposals)"~', $listHtml), 'Approver input menu visible');

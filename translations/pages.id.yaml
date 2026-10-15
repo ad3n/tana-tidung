@@ -240,7 +240,7 @@ transaction.location.IN_TRANSIT: Dalam Perjalanan
 transaction.empty_stock: Belum ada stok.
 transaction.batch_help: Kosongkan untuk membuat Nomor Batch otomatis saat penerimaan diselesaikan.
 transaction.item_code: Kode Barang
-transaction.available_stock: Stok Tersedia (Satuan Dasar)
+transaction.available_stock: Stok Tersedia
 transaction.actions: Aksi
 transaction.close: Tutup
 transaction.list: Daftar Transaksi
@@ -282,3 +282,19 @@ transaction.stock_search_action: Cari
 transaction.all_organizations: Semua SKPD/OPD
 transaction.total_stock: Total Stok
 transaction.stock_batch_action: Detail Batch
+
+transaction.price: Harga Satuan
+transaction.price_help: Harga per satuan yang dipilih, maksimal 2 angka desimal.
+
+transaction.total_amount: Total
+
+transaction.location.RESERVED: Dicadangkan
+transaction.reserved_qty: Jumlah Dicadangkan
+transaction.allocated_qty: Jumlah Alokasi
+
+transaction.item_name: Nama Barang
+transaction.line_amount: Jumlah
+entity.add: Tambah
+entity.edit: Ubah
+entity.close: Tutup
+entity.empty: Belum ada data.

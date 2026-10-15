@@ -26,7 +26,7 @@
                     </form>
                 </div>
                 <div class="card-body table-responsive">
-                    <table class="table mb-0">
+                    <table class="table transaction-list-table mb-0">
                     <thead>
                         <tr>
                             <th>{{ 'transaction.code'|trans }}</th>
@@ -45,8 +45,9 @@
                                 {% if show_origin %}<th>{{ 'transaction.organization'|trans }}</th>{% endif %}
                                 <th>{{ 'transaction.fiscal_year'|trans }}</th>
                             {% endif %}
+                            {% if is_receipt %}<th class="text-right">{{ 'transaction.total_amount'|trans }}</th>{% endif %}
                             <th>{{ 'transaction.status'|trans }}</th>
-                            <th></th>
+                            <th class="transaction-table-actions">{{ 'transaction.actions'|trans }}</th>
                         </tr>
                     </thead><tbody>
                     {% for transaction in list.items %}
@@ -67,10 +68,16 @@
                                 {% if show_origin %}<td>{{ transaction.fromOrganization ? transaction.fromOrganization.name : '-' }}</td>{% endif %}
                                 <td>{{ transaction.fiscalYear.year }}</td>
                             {% endif %}
+                            {% if is_receipt %}
+                                {% set amount = list.amounts[transaction.id] %}
+                                <td class="text-right text-nowrap">
+                                    {{ amount.value is not null ? 'Rp ' ~ (amount.value|number_format(2, ',', '.')) : '-' }}
+                                </td>
+                            {% endif %}
                             <td>{% include 'transaction/status.html.twig' %}</td>
-                            <td><a class="btn btn-sm btn-outline-secondary" href="{{ path('KejawenLab\\Application\\Admin\\Controller\\Transaction\\Get', {id: transaction.id}) }}">{{ 'transaction.view'|trans }}</a></td>
+                            <td class="transaction-table-actions"><a class="btn btn-sm btn-outline-secondary" href="{{ path('KejawenLab\\Application\\Admin\\Controller\\Transaction\\Get', {id: transaction.id}) }}">{{ 'transaction.view'|trans }}</a></td>
                         </tr>
-                    {% else %}<tr><td colspan="{{ is_receipt ? (show_origin ? 7 : 6) : (is_transfer ? (show_origin ? 7 : 6) : (show_origin ? 6 : 5)) }}">{{ 'transaction.empty'|trans }}</td></tr>{% endfor %}
+                    {% else %}<tr><td colspan="{{ is_receipt ? (show_origin ? 8 : 7) : (is_transfer ? (show_origin ? 7 : 6) : (show_origin ? 6 : 5)) }}">{{ 'transaction.empty'|trans }}</td></tr>{% endfor %}
                     </tbody></table>
                 </div>
                 {% if list.total > 25 or list.page > 1 %}

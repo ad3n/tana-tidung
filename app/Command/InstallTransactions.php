@@ -11,6 +11,7 @@ use KejawenLab\ApiSkeleton\Entity\Permission;
 use KejawenLab\Application\Admin\Controller\Transaction\Listing;
 use KejawenLab\Application\Admin\Controller\Transaction\Main;
 use KejawenLab\Application\Admin\Controller\Transaction\Stock;
+use KejawenLab\Application\Transaction\TransactionService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -21,7 +22,7 @@ use Symfony\Component\Yaml\Yaml;
 #[AsCommand(name: 'app:transactions:install', description: 'Install transaction menu, permissions and database constraints without reloading fixtures.')]
 final class InstallTransactions extends Command
 {
-    public function __construct(private EntityManagerInterface $em, #[Autowire(env: 'APP_SUPER_ADMIN')] private string $superAdmin)
+    public function __construct(private EntityManagerInterface $em, private TransactionService $transactions, #[Autowire(env: 'APP_SUPER_ADMIN')] private string $superAdmin)
     {
         parent::__construct();
     }
@@ -29,8 +30,11 @@ final class InstallTransactions extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->em->wrapInTransaction(function (): void {
+            $this->em->getConnection()->executeStatement('ALTER TABLE transaction_items ADD COLUMN IF NOT EXISTS price NUMERIC(20,2) DEFAULT NULL');
+            $this->em->getConnection()->executeStatement('UPDATE transaction_items i SET price = 10000000.00 FROM transactions t WHERE i.transaction_id = t.id AND t.type = 1 AND i.price IS NULL');
             $this->em->getConnection()->executeStatement("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS workflow_history JSON NOT NULL DEFAULT '[]'");
             $this->em->getConnection()->executeStatement('ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transaction_status_valid');
+            $this->em->getConnection()->executeStatement('ALTER TABLE stock_movements DROP CONSTRAINT IF EXISTS movement_valid');
             $this->em->getConnection()->executeStatement("UPDATE transactions SET status = 7, workflow_history = (workflow_history::jsonb || jsonb_build_array(jsonb_build_object('action', 'return', 'status', 7, 'actor_id', NULL, 'actor_name', 'Sistem', 'at', CURRENT_TIMESTAMP, 'note', 'Draft lama dipindahkan untuk dilengkapi dan diajukan.')))::json WHERE status = 1");
             $checks = [
                 'transactions' => [
@@ -38,9 +42,12 @@ final class InstallTransactions extends Command
                     'transaction_status_valid' => 'status IN (2,3,4,5,6,7) AND (status <> 2 OR type = 2) AND (status <> 6 OR type <> 1)',
                     'transaction_organizations_valid' => '(type = 1 AND from_organization_id IS NULL AND to_organization_id IS NOT NULL AND source_id IS NOT NULL) OR (type = 2 AND from_organization_id IS NOT NULL AND to_organization_id IS NOT NULL AND from_organization_id <> to_organization_id AND source_id IS NULL) OR (type = 3 AND from_organization_id IS NOT NULL AND to_organization_id IS NULL AND source_id IS NULL AND notes IS NOT NULL AND LENGTH(TRIM(notes)) > 0)',
                 ],
-                'transaction_items' => ['transaction_quantities_positive' => 'qty > 0 AND conversion_factor > 0 AND base_qty > 0 AND base_qty = qty * conversion_factor'],
+                'transaction_items' => [
+                    'transaction_quantities_positive' => 'qty > 0 AND conversion_factor > 0 AND base_qty > 0 AND base_qty = qty * conversion_factor',
+                    'transaction_price_nonnegative' => 'price IS NULL OR price >= 0',
+                ],
                 'transaction_item_allocations' => ['allocation_quantity_positive' => 'base_qty > 0'],
-                'stock_movements' => ['movement_valid' => "quantity_delta <> 0 AND location IN ('AVAILABLE','IN_TRANSIT') AND phase IN ('post','receive')"],
+                'stock_movements' => ['movement_valid' => "quantity_delta <> 0 AND location IN ('AVAILABLE','RESERVED','IN_TRANSIT') AND phase IN ('post','receive','reserve','send','release')"],
             ];
             foreach ($checks as $table => $constraints) {
                 foreach ($constraints as $name => $expression) {
@@ -50,6 +57,7 @@ final class InstallTransactions extends Command
                 }
             }
 
+            $this->transactions->reserveApprovedTransfers();
             $menu = $this->em->getRepository(Menu::class)->findOneBy(['code' => 'TRANSACTION']);
             if (!$menu) {
                 $menu = new Menu();

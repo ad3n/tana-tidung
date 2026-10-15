@@ -13,13 +13,13 @@
                 <input type="hidden" id="transaction-type" value="{{ transaction.type.value }}">
                 <input type="hidden" id="transaction-from" value="{{ transaction.fromOrganization ? transaction.fromOrganization.id : '' }}">
                 <input type="hidden" id="transaction-date" value="{{ transaction.date|date('Y-m-d') }}">
-                <div class="card-body table-responsive transaction-invoice-items"><table class="table mb-0"><thead><tr><th>{{ 'transaction.item_code'|trans }}</th><th>{{ 'transaction.item'|trans }}</th><th>{{ 'transaction.qty'|trans }}</th><th>{{ 'transaction.base_qty'|trans }}</th><th>{{ 'transaction.batch_details'|trans }}</th>{% if editable %}<th></th>{% endif %}</tr></thead><tbody>
+                <div class="card-body table-responsive transaction-invoice-items"><table class="table mb-0"><thead><tr><th>{{ 'transaction.item_code'|trans }}</th><th>{{ 'transaction.item'|trans }}</th><th>{{ 'transaction.qty'|trans }}</th>{% if transaction.type.value == 1 %}<th class="text-right">{{ 'transaction.price'|trans }}</th><th class="text-right">{{ 'transaction.total_amount'|trans }}</th>{% endif %}<th>{{ 'transaction.base_qty'|trans }}</th><th>{{ 'transaction.batch_details'|trans }}</th>{% if editable %}<th></th>{% endif %}</tr></thead><tbody>
                 {% for line in data.items %}<tr>
-                    <td>{{ line.item_code }}</td><td>{{ line.item_name }}</td><td>{{ line.qty|number_format(2, ',', '.') }} {{ line.unit_name }}{% if line.unit_id != line.base_unit_id %} ({{ line.conversion_factor|number_format(2, ',', '.')|trim('0', 'right')|trim(',', 'right') }} {{ line.base_unit_code }}){% endif %}</td><td>{{ line.base_qty|number_format(2, ',', '.') }} {{ line.base_unit_name }}</td>
+                    <td>{{ line.item_code }}</td><td>{{ line.item_name }}</td><td>{{ line.qty|number_format(2, ',', '.') }} {{ line.unit_name }}{% if line.unit_id != line.base_unit_id %} ({{ line.conversion_factor|number_format(2, ',', '.')|trim('0', 'right')|trim(',', 'right') }} {{ line.base_unit_code }}){% endif %}</td>{% if transaction.type.value == 1 %}<td class="text-right text-nowrap">{{ line.price is not null ? 'Rp ' ~ (line.price|number_format(2, ',', '.')) : '-' }}</td><td class="text-right text-nowrap">{{ line.total is not null ? 'Rp ' ~ (line.total|number_format(2, ',', '.')) : '-' }}</td>{% endif %}<td>{{ line.base_qty|number_format(2, ',', '.') }} {{ line.base_unit_name }}</td>
                     <td>
                         {% if line.allocations is not empty %}
                             <table class="table table-sm mb-0">
-                                <thead><tr><th>{{ 'transaction.batch'|trans }}</th><th>{{ (transaction.type.value == 1 ? 'transaction.received_qty' : 'transaction.taken_qty')|trans }}</th><th>{{ 'transaction.expiry'|trans }}</th></tr></thead>
+                                <thead><tr><th>{{ 'transaction.batch'|trans }}</th><th>{{ (transaction.type.value == 1 ? 'transaction.received_qty' : (transaction.status.value == 6 ? 'transaction.reserved_qty' : (transaction.status.value == 4 ? 'transaction.allocated_qty' : 'transaction.taken_qty')))|trans }}</th><th>{{ 'transaction.expiry'|trans }}</th></tr></thead>
                                 <tbody>{% for allocation in line.allocations %}
                                     <tr><td>{{ allocation.batch_number }}</td><td class="text-nowrap">{{ allocation.base_qty|number_format(6, ',', '.')|trim('0', 'right')|trim(',', 'right') }} {{ line.base_unit_name }}</td><td class="text-nowrap">{{ allocation.expiry_date ? allocation.expiry_date|date('d-m-Y') : '-' }}</td></tr>
                                 {% endfor %}</tbody>
@@ -30,7 +30,7 @@
                         {% endif %}
                     </td>
                     {% if editable %}<td><form method="post"><input type="hidden" name="_operation" value="remove_line"><input type="hidden" name="line_id" value="{{ line.id }}"><button type="submit" class="btn btn-sm btn-outline-danger">{{ 'transaction.remove'|trans }}</button></form></td>{% endif %}
-                </tr>{% else %}<tr><td colspan="6">{{ 'transaction.empty_items'|trans }}</td></tr>{% endfor %}
+                </tr>{% else %}<tr><td colspan="{{ (transaction.type.value == 1 ? 7 : 5) + (editable ? 1 : 0) }}">{{ 'transaction.empty_items'|trans }}</td></tr>{% endfor %}
                 </tbody></table></div>
             </div>
             <div class="d-flex justify-content-between flex-wrap mb-3">

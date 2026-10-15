@@ -41,6 +41,9 @@ class TransactionItem
     #[ORM\Column(type: 'decimal', precision: 24, scale: 6)]
     private string $qty;
 
+    #[ORM\Column(type: 'decimal', precision: 20, scale: 2, nullable: true)]
+    private ?string $price = null;
+
     #[ORM\Column(type: 'decimal', precision: 24, scale: 6)]
     private string $conversionFactor;
 
@@ -104,6 +107,16 @@ class TransactionItem
     public function getConversionFactor(): string
     {
         return $this->conversionFactor;
+    }
+
+    public function getPrice(): ?string
+    {
+        return $this->price;
+    }
+
+    public function setPrice(?string $price): void
+    {
+        $this->price = $price;
     }
 
     public function setConversionFactor(string $conversionFactor): void

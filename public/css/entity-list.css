@@ -1,0 +1,27 @@
+.entity-toolbar,
+.entity-action-buttons {
+    gap: 0.5rem;
+}
+
+.entity-toolbar form {
+    min-width: 15rem;
+}
+
+.entity-list-table > thead > tr > th {
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.entity-list-table > tbody > tr > td {
+    vertical-align: middle;
+}
+
+.entity-list-table .entity-actions {
+    width: 1%;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.entity-action-buttons .btn {
+    min-width: 4rem;
+}

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace KejawenLab\Application\Transaction;
 
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Doctrine\ORM\EntityManagerInterface;
 use KejawenLab\Application\Entity\Transaction;
 use KejawenLab\Application\Entity\TransactionItemAllocation;
@@ -40,6 +42,8 @@ final class TransactionPresenter
                 $result['items'][] = [
                     'id' => $line->getId(), 'item_id' => $line->getItem()->getId(), 'item_name' => $line->getItem()->getName(), 'item_code' => $line->getItem()->getCode(),
                     'unit_id' => $line->getUnit()->getId(), 'unit_name' => $line->getUnit()->getName(), 'qty' => $line->getQty(),
+                    'price' => $line->getPrice(),
+                    'total' => null === $line->getPrice() ? null : (string) BigDecimal::of($line->getQty())->multipliedBy($line->getPrice())->toScale(2, RoundingMode::HalfUp),
                     'conversion_factor' => $line->getConversionFactor(), 'base_unit_id' => $line->getBaseUnit()->getId(),
                     'base_unit_name' => $line->getBaseUnit()->getName(), 'base_unit_code' => $line->getBaseUnit()->getCode(), 'base_qty' => $line->getBaseQty(),
                     'batch_number' => $line->getBatchNumber(), 'expiry_date' => $line->getExpiryDate()?->format('Y-m-d'),

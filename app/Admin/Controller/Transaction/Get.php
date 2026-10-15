@@ -38,6 +38,7 @@ final class Get extends AbstractController
         $values['items'] = array_map(static fn (array $line): array => [
             'line_id' => $line['id'], 'item_id' => $line['item_id'], 'unit_id' => $line['unit_id'],
             'qty' => $line['qty'], 'base_qty' => $line['base_qty'], 'batch_number' => $line['batch_number'],
+            'price' => $line['price'],
             'expiry_date' => $line['expiry_date'], 'stock_lot_id' => $line['stock_lot_id'],
         ], $presenter->present($transaction)['items']);
         if ($request->isMethod('POST')) {

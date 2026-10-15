@@ -2,10 +2,10 @@
 <table class="table mb-0">
     <thead>
         <tr>
-            {% for label in ['item_code', 'item', 'qty', 'unit', 'batch', 'expiry'] %}
+            {% for label in ['item_code', 'item_name', 'expiry', 'batch', 'qty', 'unit'] %}
                 <th>{{ ('transaction.' ~ label)|trans }}</th>
             {% endfor %}
-            {% if transaction_type != 1 %}<th>{{ 'transaction.available_stock'|trans }}</th>{% endif %}
+            {% if transaction_type == 1 %}<th class="text-right">{{ 'transaction.price'|trans }}</th><th class="text-right">{{ 'transaction.line_amount'|trans }}</th>{% endif %}
             <th>{{ 'transaction.actions'|trans }}</th>
         </tr>
     </thead>

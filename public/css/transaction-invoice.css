@@ -76,3 +76,22 @@
 .transaction-invoice > .transaction-invoice-items {
     padding-top: 0;
 }
+
+.transaction-list-table > thead > tr > th {
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.transaction-list-table > tbody > tr > td {
+    vertical-align: middle;
+}
+
+.transaction-list-table .transaction-table-actions {
+    width: 1%;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.transaction-list-table .transaction-table-actions .btn {
+    min-width: 6.5rem;
+}

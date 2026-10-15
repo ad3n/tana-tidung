@@ -21,6 +21,21 @@ $(function () {
     let pending = read('transaction-pending-data', []);
     if (!Array.isArray(pending)) pending = Object.values(pending);
     const number = value => Number(value).toLocaleString('id-ID', {maximumFractionDigits: 6});
+    function lineTotal(qty, price) {
+        qty = String(qty ?? '');
+        price = String(price ?? '');
+        if (!/^\d{1,18}(\.\d{1,6})?$/.test(qty) || !/^\d{1,18}(\.\d{1,2})?$/.test(price)) return '-';
+        const scaled = (value, scale) => {
+            const [whole, fraction = ''] = value.split('.');
+            return BigInt(whole + fraction.padEnd(scale, '0'));
+        };
+        const cents = (scaled(qty, 6) * scaled(price, 2) + 500000n) / 1000000n;
+        return 'Rp ' + (cents / 100n).toLocaleString('id-ID') + ',' + String(cents % 100n).padStart(2, '0');
+    }
+    function updateTotal() {
+        $('#line-total').text(lineTotal($('#line-qty').val(), $('#line-price').val()));
+    }
+    $('#line-qty, #line-price').on('input change', updateTotal);
     function available(id) {
         const origin = $('#transaction-from').val();
         const date = $('#transaction-date').val();
@@ -31,9 +46,20 @@ $(function () {
     }
     function stockText(id) {
         const rows = available(id);
-        return number(rows.reduce((total, row) => total + Number(row.qty), 0)) + ' ' + (rows[0]?.unit || '');
+        const selected = unit.find(':selected');
+        const factor = Number(selected.data('factor'));
+        const total = rows.reduce((sum, row) => sum + Number(row.qty), 0);
+        if (unit.val() && Number.isFinite(factor) && factor > 0) {
+            return number(total / factor) + ' ' + selected.data('unit-name');
+        }
+        return number(total) + ' ' + (rows[0]?.unit || '');
     }
+    function updateStock() {
+        $('#line-stock-value').text($('#transaction-from').val() ? stockText(String(item.val())) : messages.chooseOrganization);
+    }
+    unit.on('change', updateStock);
     function updateLine() {
+        updateTotal();
         const id = String(item.val());
         const selectedUnit = unit.val();
         unit.empty().append(unitOptions.filter(function () { return !this.value || $(this).data('item') === id; }).clone());
@@ -45,9 +71,10 @@ $(function () {
             lot.empty().append(emptyOption);
             available(id).forEach(row => lot.append(new Option(row.batch_number + ' — ' + number(row.qty) + ' ' + row.unit + ' — ' + (row.expiry_date || '-'), row.stock_lot_id)));
             lot.val(lot.find('option').filter(function () { return this.value === selectedLot; }).length ? selectedLot : '').trigger('change');
-            $('#line-stock').text($('#transaction-from').val() ? messages.stock + ': ' + stockText(id) : messages.chooseOrganization).show();
+            $('#line-stock').prop('hidden', !item.val());
+            updateStock();
             $('#transaction-line-form button[type="submit"]').prop('disabled', !available(id).length);
-        } else $('#line-stock').hide();
+        } else $('#line-stock').prop('hidden', true);
     }
     function sufficientStock(lines) {
         if (type === '1') return true;
@@ -97,17 +124,31 @@ $(function () {
             const unitOption = unitOptions.filter(function () { return this.value === line.unit_id && $(this).data('item') === line.item_id; });
             const selectedLot = stocks.find(row => row.stock_lot_id === line.stock_lot_id);
             const tr = $('<tr>');
-            [option.data('code') || '-', option.data('name') || line.item_id, line.qty, unitOption.text(), line.batch_number || selectedLot?.batch_number || messages.automatic, line.expiry_date || selectedLot?.expiry_date || '-'].forEach(text => $('<td>').text(text).appendTo(tr));
-            if (type !== '1') $('<td>').text(stockText(line.item_id)).appendTo(tr);
+            [option.data('code') || '-', option.data('name') || line.item_id, line.expiry_date || selectedLot?.expiry_date || '-', line.batch_number || selectedLot?.batch_number || messages.automatic, line.qty, unitOption.text()].forEach(text => $('<td>').text(text).appendTo(tr));
+            if (type === '1') {
+                $('<td class="text-right text-nowrap">').text(lineTotal('1', line.price)).appendTo(tr);
+                $('<td class="text-right text-nowrap">').text(lineTotal(line.qty, line.price)).appendTo(tr);
+            }
             const action = $('<td>').appendTo(tr);
             $('<button type="button" class="btn btn-sm btn-outline-danger">').text(messages.remove).on('click', function () { pending.splice(index, 1); renderPending(); }).appendTo(action);
             Object.entries(line).forEach(([key, value]) => {
-                if (['line_id', 'item_id', 'unit_id', 'qty', 'batch_number', 'expiry_date', 'stock_lot_id'].includes(key)) $('<input type="hidden">').attr('name', 'items[' + index + '][' + key + ']').val(value).appendTo(action);
+                if (['line_id', 'item_id', 'unit_id', 'qty', 'price', 'batch_number', 'expiry_date', 'stock_lot_id'].includes(key)) $('<input type="hidden">').attr('name', 'items[' + index + '][' + key + ']').val(value).appendTo(action);
             });
             tbody.append(tr);
         });
         $('#transaction-empty-items').toggle(!pending.length);
     }
+    modal.on('hidden.bs.modal', function () {
+        const form = $('#transaction-line-form');
+        form[0]?.reset();
+        form.find('input:not([type="hidden"]), textarea').val('').each(function () { this.setCustomValidity(''); });
+        form.find('select').val('').trigger('change');
+        form.removeClass('was-validated').find('.is-invalid, .is-valid').removeClass('is-invalid is-valid');
+        $('#line-stock-value').empty();
+        $('#line-stock').prop('hidden', true);
+        updateLine();
+    });
+    modal.on('shown.bs.modal', updateLine);
     item.on('change', updateLine);
     $('#transaction-from, #transaction-date').on('change', function () { updateLine(); renderPending(); });
     if (create.length) {
@@ -117,8 +158,6 @@ $(function () {
             $(this).serializeArray().forEach(field => { line[field.name] = field.value; });
             pending.push(line);
             renderPending();
-            this.reset();
-            item.val('').trigger('change');
             modal.modal('hide');
         });
         renderPending();

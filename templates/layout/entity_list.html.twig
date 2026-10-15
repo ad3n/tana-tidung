@@ -1,0 +1,75 @@
+{% extends 'layout/main.html.twig' %}
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('plugins/toastr/toastr.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('plugins/select2/css/select2.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/entity-list.css') }}">
+{% endblock %}
+{% block content %}
+    {% set menu = convert_to_menu(context) %}
+    {% set editing = app.session.get('admin_edit.' ~ main_route) is not null %}
+    {% set can_form = editing ? is_granted('edit', menu) : is_granted('add', menu) %}
+    {% set list_url = path(main_route, app.request.query.all) %}
+    <div class="card">
+        <div class="card-header">
+            <h4>{{ page_title|trans({}, 'pages') }}</h4>
+            <div class="d-flex flex-wrap align-items-center entity-toolbar">
+                <form method="get" action="{{ path(main_route) }}" class="flex-grow-1">
+                    {% for key, value in app.request.query.all %}
+                        {% if key not in ['q', 'page', setting('page_field') ? setting('page_field').value : 'page'] and value is not iterable %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}
+                    {% endfor %}
+                    <div class="input-group">
+                        <input type="search" name="q" id="sasSearchValue" class="form-control" value="{{ app.request.query.get('q') }}" placeholder="{{ 'sas.table.action.search'|trans({}, 'tables') }}" aria-label="{{ 'sas.table.action.search'|trans({}, 'tables') }}">
+                        <div class="input-group-append"><button type="submit" id="sasSearch" class="btn btn-default"><i class="cil-search pr-1 align-middle" aria-hidden="true"></i>{{ 'sas.table.action.search'|trans({}, 'tables') }}</button></div>
+                    </div>
+                </form>
+                {% block download_action %}{% endblock %}
+                {% if is_granted('add', menu) %}<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#entityFormModal"><i class="cil-plus mr-1" aria-hidden="true"></i>{{ 'entity.add'|trans({}, 'pages') }}</button>{% endif %}
+            </div>
+        </div>
+        <div class="card-body table-responsive">
+            <table class="table entity-list-table mb-0">
+                <thead><tr><th scope="col">No</th>{% for property in columns %}<th scope="col">{{ ('sas.table.column.' ~ context ~ '.' ~ property.name)|trans({}, 'tables') }}</th>{% endfor %}<th scope="col" class="entity-actions">{{ 'transaction.actions'|trans({}, 'pages') }}</th></tr></thead>
+                <tbody>
+                {% for key, data in paginator.items %}
+                    <tr><td>{{ key + 1 + paginator.per_page * (paginator.page - 1) }}</td>
+                        {% for property in columns %}<td>{{ block('entity_cell') }}</td>{% endfor %}
+                        <td class="entity-actions"><div class="d-inline-flex entity-action-buttons">{{ block('entity_actions') }}</div></td>
+                    </tr>
+                {% else %}<tr><td colspan="{{ columns|length + 2 }}" class="text-center text-muted">{{ 'entity.empty'|trans({}, 'pages') }}</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer clearfix">{% include 'layout/pagination.html.twig' with {paginator: paginator} %}</div>
+    </div>
+    {% if can_form %}
+        <div class="modal fade" id="entityFormModal" tabindex="-1" role="dialog" aria-labelledby="entityFormTitle" aria-hidden="true" data-auto-open="{{ editing or app.request.method == 'POST' ? '1' : '0' }}" data-reset-url="{{ editing or app.request.method == 'POST' ? list_url : '' }}">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
+                <form id="entityForm" method="post" action="{{ list_url }}" enctype="multipart/form-data" class="modal-content">
+                    <div class="modal-header"><h5 class="modal-title" id="entityFormTitle">{{ (editing ? 'entity.edit' : 'entity.add')|trans({}, 'pages') }} — {{ page_title|trans({}, 'pages') }}</h5><button type="button" class="close" data-dismiss="modal" aria-label="{{ 'entity.close'|trans({}, 'pages') }}"><span aria-hidden="true">&times;</span></button></div>
+                    <div class="modal-body">{{ form_widget(form) }}</div>
+                    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">{{ 'sas.form.action.cancel'|trans({}, 'forms') }}</button><button type="submit" class="btn btn-outline-primary">{{ 'sas.form.action.submit'|trans({}, 'forms') }}</button></div>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+    <div class="modal fade" id="sasDeleteModal" tabindex="-1" role="dialog" aria-labelledby="entityDeleteTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="entityDeleteTitle">{{ 'sas.notification.delete.title'|trans({}, 'notifications') }}</h5><button type="button" class="close" data-dismiss="modal" aria-label="{{ 'entity.close'|trans({}, 'pages') }}"><span aria-hidden="true">&times;</span></button></div>
+            <div class="modal-body" id="sasNotification"></div>
+            <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">{{ 'sas.notification.delete.cancel'|trans({}, 'notifications') }}</button><a id="sasDeleteConfirm" class="btn btn-outline-danger">{{ 'sas.notification.delete.confirm'|trans({}, 'notifications') }}</a></div>
+        </div></div>
+    </div>
+{% endblock %}
+{% block javascripts %}
+    <script src="{{ asset('plugins/toastr/toastr.min.js') }}"></script>
+    <script src="{{ asset('plugins/select2/js/select2.full.min.js') }}"></script>
+    <script src="{{ asset('js/entity-list.js') }}"></script>
+    <script>
+        $(function () {
+            toastr.options.positionClass = 'toast-top-center';
+            {% for message in app.flashes('info') %}toastr.info({{ message|trans({}, 'pages')|json_encode|raw }});{% endfor %}
+            {% for message in app.flashes('error') %}toastr.error({{ message|trans({}, 'pages')|json_encode|raw }});{% endfor %}
+        });
+    </script>
+{% endblock %}

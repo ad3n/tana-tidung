@@ -786,7 +786,7 @@ agar nomor unik. Nomor tetap saat transaksi direvisi dan nomor transaksi lama ti
   Pengeluaran dapat memilih batch tertentu atau mengambil otomatis menurut FEFO.
   Batch yang sudah kedaluwarsa tidak dapat ditransfer, tetapi dapat dikeluarkan
   melalui pengeluaran akhir. Batch dan asal penerimaan tetap sama setelah transfer.
-- Kirim memindahkan stok tersedia asal ke stok dalam perjalanan. Terima
+- Persetujuan transfer memilih batch FEFO dan memindahkan stok tersedia asal ke Dicadangkan. Kirim memakai alokasi yang sama dan memindahkan cadangan ke Dalam Perjalanan. Pembatalan sebelum Kirim melepas cadangan ke Tersedia. Terima
   mengeluarkan stok dalam perjalanan asal dan menambah stok tersedia tujuan.
   Semua mutasi dibukukan dalam transaksi database atomik dengan advisory lock,
   pengecekan saldo dan status, serta unique constraint untuk mencegah duplikasi.
@@ -808,7 +808,7 @@ pengecualian untuk memverifikasi/menyetujui semua organisasi, termasuk transaksi
 yang dibuatnya sendiri, namun tetap mengikuti urutan status.
 
 Pengajuan tidak mengubah atau mencadangkan stok. Stok penerimaan
-bertambah dan pengeluaran berkurang saat Setujui; persetujuan transfer belum mengubah stok. Transfer masuk
+bertambah dan pengeluaran berkurang saat Setujui; persetujuan transfer memindahkan stok Tersedia ke Dicadangkan. Transfer masuk
 Dalam Perjalanan saat Kirim. Saldo diperiksa kembali saat pengajuan, persetujuan,
 dan pembukuan untuk mencegah kelebihan pengeluaran.
 
@@ -899,7 +899,7 @@ serta halaman admin, kemudian membersihkan hanya data uji miliknya.
 ### Ringkasan Stok Barang
 
 Halaman Stok Barang menampilkan total per barang dan satuan dasar, dengan kolom
-Tersedia, Dalam Perjalanan, dan Total Stok. Total adalah jumlah kedua status;
+Tersedia, Dicadangkan, Dalam Perjalanan, dan Total Stok. Total adalah jumlah ketiga status;
 stok dalam perjalanan belum dapat digunakan oleh unit tujuan. Tanpa filter,
 super admin melihat gabungan seluruh SKPD/OPD. Pencarian `q` mencocokkan sebagian
 nama atau kode barang tanpa membedakan huruf besar/kecil; `organization_id` membatasi unit.
@@ -911,7 +911,7 @@ stok kecil menjadi nol. Stok tersedia mencakup batch kedaluwarsa; aturan kelayak
 transfer tetap diperiksa saat transaksi. Tidak ada perubahan ledger atau schema.
 
 API `/api/transactions/stocks` tetap mengembalikan rincian batch secara default.
-Tambahkan `summary=1` untuk ringkasan dengan `available`, `in_transit`, `total`,
+Tambahkan `summary=1` untuk ringkasan dengan `available`, `reserved`, `in_transit`, `total`,
 dan `batches`; filter `q` serta `organization_id` berlaku pada kedua bentuk.
 
 ### Batas stok dan pembagian batch
@@ -962,3 +962,46 @@ header khusus halaman. Tabel batch di dalam baris memakai `table table-sm mb-0`
 agar tetap ringkas. Tabel input dan revisi berbagi komponen
 `templates/transaction/pending_items.html.twig` agar perubahan kolom dan style
 berlaku konsisten pada Penerimaan, Transfer, dan Pengeluaran.
+
+Daftar Penerimaan, Transfer, Pengeluaran, dan Stok Barang menambahkan class
+`transaction-list-table` untuk perataan vertikal kolom yang konsisten. Kolom
+terakhir berjudul Aksi menggunakan `transaction-table-actions`, rata tengah,
+tidak terpotong ke baris berikutnya, dengan tombol `btn btn-sm btn-outline-secondary`.
+Data teks rata kiri dan angka jumlah/harga rata kanan.
+
+Harga satuan detail penerimaan (`items[].price`) wajib diisi, dalam rupiah per satuan input
+yang dipilih, disimpan sebagai DECIMAL(20,2). Nilai nol diperbolehkan; nilai negatif,
+lebih dari dua angka desimal, dan harga pada transfer/pengeluaran ditolak. Harga kosong atau tidak dikirim ditolak. Harga penerimaan lama diisi Rp10.000.000,00. Harga dipertahankan saat revisi
+dan ditampilkan pada tabel input serta detail penerimaan.
+
+Kolom Total hanya ditampilkan pada Daftar Penerimaan, dihitung dari penjumlahan
+jumlah × harga per satuan input seluruh barang. Perhitungan memakai decimal dan
+dibulatkan HALF_UP ke dua desimal pada hasil akhir. Daftar Transfer dan Daftar
+Pengeluaran tidak menampilkan atau menghitung total harga.
+
+Transfer yang Disetujui mencadangkan stok per batch secara atomik dengan advisory
+lock yang sama dengan pembukuan stok. Cadangan tidak masuk stok tersedia pada
+validasi pengajuan, persetujuan lain, maupun pengeluaran. Saat Kirim, alokasi tidak
+dihitung ulang; stok Dicadangkan berpindah ke Dalam Perjalanan. Batch yang sudah
+kedaluwarsa saat Kirim ditolak; superadmin dapat membatalkan untuk melepas cadangan.
+Pembatalan Disetujui mengembalikan seluruh cadangan ke Tersedia dan mempertahankan
+riwayat alokasi/mutasi. Pengulangan approve/send/cancel ditolak oleh status dan
+constraint mutasi unik. Installer memperbarui constraint dan mencadangkan transfer
+lama berstatus Disetujui secara idempotent; jika stok tidak cukup, migrasi dibatalkan.
+
+Total per barang pada modal, tabel input/revisi, dan detail Penerimaan adalah jumlah dalam satuan input × harga satuan, dibulatkan dua angka desimal. API detail mengembalikan `items[].total`; total dihitung server, bukan diterima dari input pengguna.
+
+### Tabel Master, Organisasi, dan Administrator
+
+Halaman daftar Tahun Anggaran, Satuan, Sumber Barang, Kategori, Barang,
+SKPD/OPD, Jabatan, Pegawai, User, Group, Menu, Setting, dan Cronjob menggunakan
+`templates/layout/entity_list.html.twig`. Kolom per halaman dan aksi yang
+bergantung pada hak akses tetap didefinisikan pada template masing-masing.
+Tabel memakai lebar penuh dengan kolom Aksi terakhir, pencarian dan tombol
+Tambah/Unduh di header, serta pagination di footer.
+
+Tambah dan Ubah menggunakan modal bersama; Ubah tetap melalui route edit
+sebelum modal dibuka otomatis. Validasi gagal membuka kembali modal dengan
+nilai dan pesan kesalahan. Batal/tutup mereset form tambah; pada mode ubah
+atau setelah validasi gagal, halaman dimuat ulang untuk membersihkan sesi
+edit tanpa menyimpan. Select2 menggunakan modal sebagai dropdown parent.
