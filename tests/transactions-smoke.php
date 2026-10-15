@@ -283,6 +283,14 @@ try {
     checkModule('0.00' === $zeroPrice['items'][0]['price'], 'Zero receipt price failed');
     $receiptList = apiAs('A', 'transactions?q='.$receipt['code'], 200);
     checkModule(['value' => '250001.00', 'estimated' => false] === $receiptList['amounts'][$receipt['id']], 'Receipt total incorrect');
+    $checkListed = static function (array $transaction, array $visibility): void {
+        foreach ($visibility as $actor => $visible) {
+            $list = apiAs($actor, 'transactions?q='.$transaction['code'], 200);
+            checkModule(($visible ? 1 : 0) === $list['total'], 'Unexpected transaction visibility for '.$actor.' / '.$transaction['code']);
+            checkModule($visible === in_array($transaction['id'], array_column($list['items'], 'id'), true), 'List rows differ from visibility count');
+        }
+    };
+    $checkListed($receipt, ['A' => true, 'B' => false, 'apprA' => true, 'apprB' => false, 'admin' => true]);
     $r = 'transactions/'.$receipt['id'];
     checkModule(5 === $receipt['status'] && ['submit'] === array_column($receipt['workflow_history'], 'action'), 'Input did not submit atomically');
     checkModule('125000.50' === $receipt['items'][0]['price'], 'Receipt price not saved exactly');
@@ -297,6 +305,7 @@ try {
     apiAs('apprA', $r.'/return', 400, 'POST');
     $returned = apiAs('apprA', $r.'/return', 200, 'POST', ['note' => 'Perbaiki faktur']);
     checkModule(7 === $returned['status'], 'Revision request failed');
+    $checkListed($receipt, ['A' => true, 'apprA' => false, 'admin' => true]);
     apiAs('apprA', $r, 403, 'PUT', $receiptData);
     $retained = $returned['items'][0];
     $kept = ['line_id' => $retained['id'], 'item_id' => $retained['item_id'], 'unit_id' => $retained['unit_id'], 'qty' => $retained['qty'], 'price' => $retained['price'], 'batch_number' => $retained['batch_number'], 'expiry_date' => $retained['expiry_date'], 'stock_lot_id' => $retained['stock_lot_id']];
@@ -308,8 +317,10 @@ try {
     checkModule(5 === $revised['status'] && '50.000000' === $revised['items'][0]['base_qty'], 'Revision did not resubmit or changed snapshot');
     checkModule('125000.50' === $revised['items'][0]['price'], 'Revision lost receipt price');
     $db->update('item_unit_conversions', ['factor' => '25'], ['id' => $conversion->getId()]);
+    $checkListed($receipt, ['A' => true, 'apprA' => true]);
     checkModule(3 === apiAs('apprA', $r.'/verify', 200, 'POST')['status'], 'Receipt approval failed');
     apiAs('apprA', $r.'/verify', 409, 'POST');
+    $checkListed($receipt, ['A' => true, 'B' => false, 'apprA' => false, 'admin' => true]);
     checkModule('50.000000' === stockQty('A', $orgs['A']->getId(), $item->getId()), 'Receipt stock incorrect');
     $second = newTransaction('A', array_replace($receiptData, ['items' => [array_replace($lineData, ['unit_id' => $unit->getId(), 'qty' => '10', 'price' => '25000.25', 'batch_number' => '', 'expiry_date' => date('Y-m-d', strtotime($lineData['expiry_date'].' +10 days'))])]]));
     $second = apiAs('admin', 'transactions/'.$second['id'].'/verify', 200, 'POST');
@@ -318,8 +329,9 @@ try {
     apiAs('A', 'transactions', 409, 'POST', array_replace($transferData, ['items' => [array_replace($transferData['items'][0], ['qty' => '61'])]]));
     apiAs('A', 'transactions', 400, 'POST', array_replace($transferData, ['items' => [array_replace($transferData['items'][0], ['price' => '1.00'])]]));
     $transfer = newTransaction('A', $transferData);
+    $checkListed($transfer, ['A' => true, 'B' => true, 'C' => false, 'apprA' => true, 'apprB' => false, 'admin' => true]);
     $transferList = apiAs('A', 'transactions?q='.$transfer['code'], 200);
-    checkModule(!isset($transferList['amounts'][$transfer['id']]), 'Non-receipt list must not calculate monetary totals');
+    checkModule(null === $transferList['amounts'][$transfer['id']]['value'], 'Unallocated transfer amount must be unknown');
     $t = 'transactions/'.$transfer['id'];
     apiAs('A', $t.'/approve', 403, 'POST');
     apiAs('A', $t.'/send', 409, 'POST');
@@ -327,6 +339,7 @@ try {
     $competingTransfer = newTransaction('A', array_replace($transferData, ['items' => [array_replace($transferData['items'][0], ['qty' => '10'])]]));
     $competingDisposal = newTransaction('A', ['type' => 3, 'date' => $date, 'notes' => 'Rusak', 'items' => [array_replace($transferData['items'][0], ['qty' => '6'])]]);
     $approvedTransfer = apiAs('apprA', $t.'/approve', 200, 'POST');
+    $checkListed($transfer, ['A' => true, 'B' => true, 'apprA' => false, 'apprB' => false, 'admin' => true]);
     checkModule('5.000000' === stockQty('A', $orgs['A']->getId(), $item->getId()), 'Approval did not reduce available stock');
     checkModule('55.000000' === stockQty('A', $orgs['A']->getId(), $item->getId(), 'RESERVED'), 'Approval did not reserve stock');
     $reservedSummary = apiAs('A', 'transactions/stocks?summary=1', 200)['items'][0];
@@ -338,8 +351,9 @@ try {
     apiAs('A', 'transactions', 409, 'POST', array_replace($transferData, ['items' => [array_replace($transferData['items'][0], ['qty' => '6'])]]));
     apiAs('apprA', $t.'/send', 403, 'POST');
     $sent = apiAs('A', $t.'/send', 200, 'POST');
+    $checkListed($transfer, ['A' => true, 'B' => true, 'apprA' => false, 'apprB' => false]);
     $sentList = apiAs('A', 'transactions?q='.$transfer['code'], 200);
-    checkModule(!isset($sentList['amounts'][$transfer['id']]), 'Non-receipt list must not calculate monetary totals');
+    checkModule('375002.25' === $sentList['amounts'][$transfer['id']]['value'], 'Transfer amount must combine batch prices using receipt conversion factors');
     checkModule($approvedTransfer['items'][0]['allocations'] === $sent['items'][0]['allocations'], 'Send changed reserved batch allocations');
     checkModule('0.000000' === stockQty('A', $orgs['A']->getId(), $item->getId(), 'RESERVED'), 'Send did not consume reservation');
     apiAs('A', $t.'/send', 409, 'POST');
@@ -348,15 +362,18 @@ try {
     checkModule('55.000000' === stockQty('A', $orgs['A']->getId(), $item->getId(), 'IN_TRANSIT'), 'Transit balance incorrect');
     apiAs('A', $t.'/receive', 403, 'POST');
     apiAs('B', $t.'/receive', 200, 'POST');
+    $checkListed($transfer, ['A' => true, 'B' => true, 'apprA' => false, 'apprB' => false, 'admin' => true]);
     checkModule('55.000000' === stockQty('B', $orgs['B']->getId(), $item->getId()), 'Destination stock incorrect');
     $disposalData = ['type' => 3, 'date' => $date, 'reference_number' => 'OUT-'.$suffix, 'notes' => 'Rusak', 'items' => [['item_id' => $item->getId(), 'unit_id' => $unit->getId(), 'qty' => '5']]];
     apiAs('B', 'transactions', 400, 'POST', array_replace($disposalData, ['notes' => '']));
     $disposal = newTransaction('B', $disposalData);
+    $checkListed($disposal, ['A' => false, 'B' => true, 'apprA' => false, 'apprB' => true, 'admin' => true]);
     $d = 'transactions/'.$disposal['id'];
     apiAs('B', $d.'/approve', 403, 'POST');
     checkModule(3 === apiAs('apprB', $d.'/approve', 200, 'POST')['status'], 'Disposal approval did not complete immediately');
+    $checkListed($disposal, ['B' => true, 'apprB' => false, 'admin' => true]);
     $disposalList = apiAs('B', 'transactions?q='.$disposal['code'], 200);
-    checkModule(!isset($disposalList['amounts'][$disposal['id']]), 'Non-receipt list must not calculate monetary totals');
+    checkModule('25000.10' === $disposalList['amounts'][$disposal['id']]['value'], 'Disposal after transfer must retain original receipt batch price');
     apiAs('B', $d.'/post', 403, 'POST');
     apiAs('apprB', $d.'/approve', 409, 'POST');
     checkModule('50.000000' === stockQty('B', $orgs['B']->getId(), $item->getId()), 'Disposal balance incorrect');
@@ -366,7 +383,7 @@ try {
     apiAs('apprB', 'transactions/'.$pendingTwo['id'].'/approve', 409, 'POST');
     checkModule(5 === apiAs('B', 'transactions/'.$pendingTwo['id'], 200)['status'], 'Insufficient stock changed submitted status');
     $insufficientList = apiAs('B', 'transactions?q='.$pendingTwo['code'], 200);
-    checkModule(!isset($insufficientList['amounts'][$pendingTwo['id']]), 'Non-receipt list must not calculate monetary totals');
+    checkModule(null === $insufficientList['amounts'][$pendingTwo['id']]['value'], 'Unallocated disposal amount must be unknown');
     checkModule('20.000000' === stockQty('B', $orgs['B']->getId(), $item->getId()), 'Failed approval did not roll back stock');
     $cancelTransfer = newTransaction('B', array_replace($transferData, ['to_organization_id' => $orgs['A']->getId(), 'items' => [array_replace($transferData['items'][0], ['qty' => '10'])]]));
     $cancelPath = 'transactions/'.$cancelTransfer['id'];
@@ -374,6 +391,7 @@ try {
     checkModule('10.000000' === stockQty('B', $orgs['B']->getId(), $item->getId()), 'Cancel scenario reservation missing');
     apiAs('B', $cancelPath.'/cancel', 403, 'POST', ['note' => 'Not allowed']);
     apiAs('admin', $cancelPath.'/cancel', 200, 'POST', ['note' => 'Transfer dibatalkan']);
+    $checkListed($cancelTransfer, ['A' => true, 'B' => true, 'apprA' => false, 'apprB' => false, 'admin' => true]);
     checkModule('20.000000' === stockQty('B', $orgs['B']->getId(), $item->getId()), 'Cancellation did not restore available stock');
     checkModule('0.000000' === stockQty('B', $orgs['B']->getId(), $item->getId(), 'RESERVED'), 'Cancellation left reserved stock');
     apiAs('admin', $cancelPath.'/cancel', 409, 'POST', ['note' => 'Repeat']);
@@ -390,6 +408,21 @@ try {
     checkModule('20.000000' === stockQty('B', $orgs['B']->getId(), $item->getId()), 'Expired reservation could not be released');
     $db->update('stock_lots', ['expiry_date' => $previousExpiry], ['id' => $expiryLot]);
 
+    $outgoingData = array_replace($transferData, ['to_organization_id' => $orgs['A']->getId(), 'items' => [array_replace($transferData['items'][0], ['qty' => '1'])]]);
+    $sentOutgoing = newTransaction('B', $outgoingData);
+    apiAs('apprB', 'transactions/'.$sentOutgoing['id'].'/approve', 200, 'POST');
+    apiAs('B', 'transactions/'.$sentOutgoing['id'].'/send', 200, 'POST');
+    $reservedOutgoing = newTransaction('B', $outgoingData);
+    apiAs('apprB', 'transactions/'.$reservedOutgoing['id'].'/approve', 200, 'POST');
+
+    $returnedTransfer = newTransaction('B', $outgoingData);
+    apiAs('apprB', 'transactions/'.$returnedTransfer['id'].'/return', 200, 'POST', ['note' => 'Perbaiki SK']);
+
+    $returnedReceipt = newTransaction('B', array_replace($receiptData, ['items' => [array_replace($lineData, ['batch_number' => 'RETURNED-'.$suffix])]]));
+    apiAs('apprB', 'transactions/'.$returnedReceipt['id'].'/return', 200, 'POST', ['note' => 'Perbaiki faktur']);
+    $returnedDisposal = newTransaction('B', array_replace($disposalData, ['items' => [array_replace($disposalData['items'][0], ['qty' => '1'])]]));
+    apiAs('apprB', 'transactions/'.$returnedDisposal['id'].'/return', 200, 'POST', ['note' => 'Perbaiki pengeluaran']);
+
     apiAs('A', 'transactions/stocks?organization_id='.$orgs['B']->getId(), 403);
     $summary = apiAs('A', 'transactions/stocks?summary=1&q='.strtolower($item->getCode()), 200)['items'];
     checkModule(1 === count($summary) && '5.000000' === $summary[0]['total'], 'Stock summary search incorrect');
@@ -399,7 +432,7 @@ try {
     apiAs('reader', 'transactions/stocks', 403);
     $stockPermission->setViewable(true);
     $em->flush();
-    foreach (['reader', 'orphan', 'admin', 'apprA', 'A'] as $who) {
+    foreach (['reader', 'orphan', 'admin', 'apprA', 'A', 'B'] as $who) {
         [, $headers] = request('/admin/', 302, 'POST', http_build_query(['_username' => $users[$who]->getUsername(), '_password' => $password]), ['Content-Type: application/x-www-form-urlencoded']);
         $cookies = [];
         foreach ($headers as $header) {
@@ -467,10 +500,10 @@ try {
                 checkModule(str_contains($html, '>Ajukan</button>') && !str_contains($html, '>Simpan</button>'), 'Input button not Ajukan');
             }
             [$listHtml] = request('/admin/transactions/'.$section.'/list', 200, headers: $auth);
-            checkModule(str_contains($listHtml, '>Total</th>') === ('receipts' === $section), 'Total column must only appear in receipt list');
+            checkModule(str_contains($listHtml, '>Jumlah</th>'), 'All transaction lists must show Jumlah');
             checkModule(str_contains($listHtml, 'id="transaction-list-organization"') === ('admin' === $who), 'List filter visibility incorrect');
             if ('apprA' === $who) {
-                checkModule(!preg_match('~href="/admin/transactions/(receipts|transfers|disposals)"~', $listHtml), 'Approver input menu visible');
+                checkModule(!preg_match('~href="/admin/transactions/(receipts|transfers|disposals|stocks)"~', $listHtml), 'Approver input or stock menu visible');
             }
             if ('admin' === $who) {
                 $target = match ($section) {
@@ -480,6 +513,165 @@ try {
                 checkModule(!str_contains($filtered, 'href="/admin/transactions/'.$target['id'].'"'), 'Filter leaked transaction');
             }
         }
+        foreach ([$transfer, $sentOutgoing, $reservedOutgoing, $cancelTransfer, $competingTransfer, $disposal] as $candidate) {
+            [$outgoingHtml] = request('/admin/transactions/disposals/list?q='.$candidate['code'], 200, headers: $auth);
+            $origin = $candidate['id'] === $transfer['id'] ? 'A' : 'B';
+            $visibleStatus = in_array($candidate['id'], [$transfer['id'], $cancelTransfer['id'], $disposal['id']], true);
+            $expected = $visibleStatus && ('admin' === $who || $origin === $who);
+            if (in_array($who, ['admin', 'A', 'B', 'apprA'], true)) {
+                checkModule($expected === str_contains($outgoingHtml, 'href="/admin/transactions/'.$candidate['id'].'"'), 'Outgoing list status or organization scope incorrect');
+                if ($expected) {
+                    $label = $candidate['id'] === $disposal['id'] ? 'Pengeluaran Langsung' : 'Transfer Keluar';
+                    checkModule(str_contains($outgoingHtml, $label), 'Outgoing receipt type label missing');
+                    $expectedAmount = $candidate['id'] === $transfer['id'] ? '375.002,25' : ($candidate['id'] === $disposal['id'] ? '25.000,10' : ($candidate['id'] === $cancelTransfer['id'] ? '50.000,20' : '5.000,02'));
+                    checkModule(str_contains($outgoingHtml, 'Rp '.$expectedAmount), 'Outgoing batch amount missing or incorrect');
+                }
+            }
+            if ('admin' === $who) {
+                foreach (['A', 'B', 'C'] as $filterKey) {
+                    [$filteredHtml] = request('/admin/transactions/disposals/list?'.http_build_query(['q' => $candidate['code'], 'organization_id' => $orgs[$filterKey]->getId()]), 200, headers: $auth);
+                    checkModule(($visibleStatus && $origin === $filterKey) === str_contains($filteredHtml, 'href="/admin/transactions/'.$candidate['id'].'"'), 'Superadmin outgoing filter must match origin');
+                }
+            }
+        }
+
+        foreach (['receipts' => [$receipt, $transfer, $sentOutgoing], 'disposals' => [$disposal, $transfer, $sentOutgoing]] as $section => $candidates) {
+            foreach ($candidates as $candidate) {
+                [$allHtml] = request('/admin/transactions/'.$section.'/list?'.http_build_query(['q' => $candidate['code'], 'kind' => 'all']), 200, headers: $auth);
+                $link = 'href="/admin/transactions/'.$candidate['id'].'"';
+                $visible = str_contains($allHtml, $link);
+                foreach (['direct', 'transfer'] as $kind) {
+                    [$kindHtml] = request('/admin/transactions/'.$section.'/list?'.http_build_query(['q' => $candidate['code'], 'kind' => $kind]), 200, headers: $auth);
+                    $isTransfer = in_array($candidate['id'], [$transfer['id'], $sentOutgoing['id']], true);
+                    checkModule(($visible && $isTransfer === ('transfer' === $kind)) === str_contains($kindHtml, $link), 'Kind filter returned incorrect rows or bypassed organization/status scope');
+                    checkModule(str_contains($kindHtml, 'value="'.$kind.'" selected'), 'Kind selection was not retained');
+                }
+            }
+            request('/admin/transactions/'.$section.'/list?kind=invalid', 400, headers: $auth);
+        }
+        if ('admin' === $who) {
+            foreach (['receipts' => 'B', 'disposals' => 'A'] as $section => $owner) {
+                foreach (['A', 'B', 'C'] as $filterKey) {
+                    [$kindHtml] = request('/admin/transactions/'.$section.'/list?'.http_build_query(['q' => $transfer['code'], 'kind' => 'transfer', 'organization_id' => $orgs[$filterKey]->getId()]), 200, headers: $auth);
+                    checkModule(($owner === $filterKey) === str_contains($kindHtml, 'href="/admin/transactions/'.$transfer['id'].'"'), 'Kind and organization filters do not combine');
+                }
+                [$pageHtml] = request('/admin/transactions/'.$section.'/list?'.http_build_query(['page' => 2, 'q' => $transfer['code'], 'kind' => 'transfer', 'organization_id' => $orgs[$owner]->getId()]), 200, headers: $auth);
+                checkModule(str_contains($pageHtml, 'kind=transfer') && str_contains($pageHtml, 'organization_id='.$orgs[$owner]->getId()), 'Pagination dropped filters');
+            }
+        }
+
+        if (in_array($who, ['admin', 'A', 'B', 'apprA'], true)) {
+            foreach ([[$transfer, []], [$cancelTransfer, []], [$sentOutgoing, ['A']], [$reservedOutgoing, ['B']], [$returnedTransfer, ['B']], [$competingTransfer, ['A', 'apprA']]] as [$candidate, $actors]) {
+                [$followupHtml] = request('/admin/transactions/transfers/list?q='.$candidate['code'], 200, headers: $auth);
+                $expected = 'admin' === $who ? [] !== $actors : in_array($who, $actors, true);
+                checkModule($expected === str_contains($followupHtml, 'href="/admin/transactions/'.$candidate['id'].'"'), 'Follow-up queue contains incorrect role/status');
+                checkModule(str_contains($followupHtml, 'Tindak Lanjut'), 'Follow-up title missing');
+                foreach (['submitted' => $competingTransfer, 'approved' => $reservedOutgoing, 'returned' => $returnedTransfer, 'sent' => $sentOutgoing] as $filterStatus => $statusCandidate) {
+                    [$statusHtml] = request('/admin/transactions/transfers/list?'.http_build_query(['q' => $candidate['code'], 'status' => $filterStatus, 'organization_id' => $orgs['C']->getId()]), 200, headers: $auth);
+                    $matches = $expected && $candidate['id'] === $statusCandidate['id'] && 'admin' !== $who;
+                    checkModule($matches === str_contains($statusHtml, 'href="/admin/transactions/'.$candidate['id'].'"'), 'Follow-up status filter bypassed role or organization');
+                    if ('admin' === $who) {
+                        [$unfilteredOrgHtml] = request('/admin/transactions/transfers/list?'.http_build_query(['q' => $candidate['code'], 'status' => $filterStatus]), 200, headers: $auth);
+                        checkModule(($expected && $candidate['id'] === $statusCandidate['id']) === str_contains($unfilteredOrgHtml, 'href="/admin/transactions/'.$candidate['id'].'"'), 'Superadmin follow-up status filter incorrect');
+                    }
+                    if ('apprA' !== $who) {
+                        checkModule(str_contains($statusHtml, 'value="'.$filterStatus.'" selected'), 'Follow-up status selection lost');
+                    } else {
+                        checkModule(!str_contains($statusHtml, 'id="transaction-list-status"'), 'Approver must not see redundant follow-up status filter');
+                    }
+                }
+
+            }
+        }
+
+        if (in_array($who, ['admin', 'A', 'B', 'apprA'], true)) {
+            foreach (['receipts', 'disposals'] as $section) {
+                foreach ([$transfer, $cancelTransfer, $sentOutgoing] as $candidate) {
+                    [$allHtml] = request('/admin/transactions/'.$section.'/list?'.http_build_query(['q' => $candidate['code'], 'kind' => 'transfer']), 200, headers: $auth);
+                    $link = 'href="/admin/transactions/'.$candidate['id'].'"';
+                    foreach (['completed', 'cancelled'] as $filterStatus) {
+                        [$statusHtml] = request('/admin/transactions/'.$section.'/list?'.http_build_query(['q' => $candidate['code'], 'kind' => 'transfer', 'status' => $filterStatus]), 200, headers: $auth);
+                        $matches = 'completed' === $filterStatus ? $candidate['id'] === $transfer['id'] : $candidate['id'] === $cancelTransfer['id'];
+                        checkModule((str_contains($allHtml, $link) && $matches) === str_contains($statusHtml, $link), 'Status filter bypassed kind, organization or approval restrictions');
+                        checkModule(str_contains($statusHtml, 'value="'.$filterStatus.'" selected'), 'Status selection lost');
+                    }
+                }
+                request('/admin/transactions/'.$section.'/list?status=invalid', 400, headers: $auth);
+                [$pageHtml] = request('/admin/transactions/'.$section.'/list?'.http_build_query(['page' => 2, 'q' => $transfer['code'], 'kind' => 'transfer', 'status' => 'completed']), 200, headers: $auth);
+                checkModule(str_contains($pageHtml, 'status=completed') && str_contains($pageHtml, 'kind=transfer'), 'Pagination dropped status');
+            }
+        }
+
+        if (in_array($who, ['admin', 'A', 'B', 'apprA'], true)) {
+            foreach ([[$returnedReceipt, ['admin', 'B'], 'returned'], [$returnedDisposal, ['admin', 'B'], 'returned'], [$zeroPrice, ['admin', 'A', 'apprA'], 'submitted'], [$pendingTwo, ['admin', 'B'], 'submitted'], [$receipt, [], 'returned'], [$disposal, [], 'submitted']] as [$candidate, $actors, $filterStatus]) {
+                foreach (['all', $filterStatus] as $choice) {
+                    [$queueHtml] = request('/admin/transactions/transfers/list?'.http_build_query(['q' => $candidate['code'], 'status' => $choice]), 200, headers: $auth);
+                    checkModule(in_array($who, $actors, true) === str_contains($queueHtml, 'href="/admin/transactions/'.$candidate['id'].'"'), 'Combined follow-up queue lost receipt/disposal role or status scope');
+                }
+                if ('admin' === $who) {
+                    [$queueHtml] = request('/admin/transactions/transfers/list?'.http_build_query(['q' => $candidate['code'], 'organization_id' => $orgs['C']->getId()]), 200, headers: $auth);
+                    checkModule(!str_contains($queueHtml, 'href="/admin/transactions/'.$candidate['id'].'"'), 'Combined follow-up queue bypassed organization filter');
+                }
+            }
+        }
+
+        foreach (['invalid', 'completed', 'cancelled'] as $invalidStatus) {
+            request('/admin/transactions/transfers/list?status='.$invalidStatus, 400, headers: $auth);
+        }
+        [$followupPage] = request('/admin/transactions/transfers/list?page=2&status=submitted', 200, headers: $auth);
+        checkModule(str_contains($followupPage, 'status=submitted'), 'Follow-up pagination lost status');
+
+        foreach (['receipts' => [$zeroPrice, $returnedReceipt], 'disposals' => [$pendingTwo, $returnedDisposal, $sentOutgoing]] as $section => $candidates) {
+            foreach ($candidates as $candidate) {
+                [$historyHtml] = request('/admin/transactions/'.$section.'/list?q='.$candidate['code'], 200, headers: $auth);
+                checkModule(!str_contains($historyHtml, 'href="/admin/transactions/'.$candidate['id'].'"'), 'History includes unfinished transaction');
+                checkModule(!str_contains($historyHtml, '<option value="pending"'), 'Removed status option still visible');
+            }
+            request('/admin/transactions/'.$section.'/list?status=pending', 400, headers: $auth);
+        }
+        foreach ([$returnedReceipt, $returnedTransfer, $returnedDisposal, $zeroPrice] as $candidate) {
+            [$allHtml] = request('/admin/transactions/transfers/list?q='.$candidate['code'], 200, headers: $auth);
+            $link = 'href="/admin/transactions/'.$candidate['id'].'"';
+            foreach (['receipt' => 1, 'transfer' => 2, 'disposal' => 3] as $filterKind => $kindType) {
+                [$kindHtml] = request('/admin/transactions/transfers/list?'.http_build_query(['q' => $candidate['code'], 'kind' => $filterKind]), 200, headers: $auth);
+                checkModule((str_contains($allHtml, $link) && $candidate['type'] === $kindType) === str_contains($kindHtml, $link), 'Follow-up kind filter bypassed role or organization scope');
+                checkModule(str_contains($kindHtml, 'value="'.$filterKind.'" selected'), 'Follow-up kind filter selection missing');
+            }
+        }
+        request('/admin/transactions/transfers/list?kind=direct', 400, headers: $auth);
+
+        if ('apprA' === $who) {
+            request('/admin/transactions/stocks', 403, headers: $auth);
+            apiAs($who, 'transactions/stocks', 403);
+            apiAs($who, 'transactions/stocks?summary=1', 403);
+            continue;
+        }
+
+        if ('admin' === $who) {
+            foreach (['' => true, 'A' => false, 'B' => true, 'C' => false] as $organizationKey => $expected) {
+                $query = ['q' => $transfer['code']];
+                if ('' !== $organizationKey) {
+                    $query['organization_id'] = $orgs[$organizationKey]->getId();
+                }
+
+                [$incomingHtml] = request('/admin/transactions/receipts/list?'.http_build_query($query), 200, headers: $auth);
+                checkModule($expected === str_contains($incomingHtml, 'href="/admin/transactions/'.$transfer['id'].'"'), 'Superadmin receipt filter must match transfer destination');
+            }
+        }
+
+        if (in_array($who, ['admin', 'A', 'B'], true)) {
+            foreach ([$transfer, $cancelTransfer, $competingTransfer, $sentOutgoing, $reservedOutgoing] as $candidate) {
+                [$incomingHtml] = request('/admin/transactions/receipts/list?q='.$candidate['code'], 200, headers: $auth);
+                $destination = $candidate['id'] === $transfer['id'] ? 'B' : 'A';
+                $expected = in_array($candidate['id'], [$transfer['id'], $cancelTransfer['id']], true) && ('admin' === $who || $destination === $who);
+                checkModule($expected === str_contains($incomingHtml, 'href="/admin/transactions/'.$candidate['id'].'"'), 'Receipt list exposed an outgoing, pending or cancelled transfer');
+                if ($expected) {
+                    checkModule(str_contains($incomingHtml, 'Transfer Masuk') && str_contains($incomingHtml, $orgs[$destination === 'B' ? 'A' : 'B']->getName()), 'Incoming transfer label or source missing');
+                    checkModule(str_contains($incomingHtml, 'Rp '.($candidate['id'] === $transfer['id'] ? '375.002,25' : '50.000,20')), 'Incoming transfer amount missing');
+                }
+            }
+        }
+
         [$stockHtml] = request('/admin/transactions/stocks', 200, headers: $auth);
         checkModule(str_contains($stockHtml, 'id="stock-organization"') === ('admin' === $who), 'Stock filter visibility incorrect');
         if ('A' === $who) {

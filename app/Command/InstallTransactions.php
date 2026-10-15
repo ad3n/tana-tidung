@@ -71,7 +71,7 @@ final class InstallTransactions extends Command
 
             $menu->setRouteName('#');
             $children = [];
-            foreach (['receipt' => 'Penerimaan', 'transfer' => 'Transfer', 'disposal' => 'Pengeluaran', 'receipt_list' => 'Daftar Penerimaan', 'transfer_list' => 'Daftar Transfer', 'disposal_list' => 'Daftar Pengeluaran', 'stock' => 'Stok Barang'] as $key => $name) {
+            foreach (['receipt' => 'Penerimaan', 'transfer' => 'Transfer', 'disposal' => 'Pengeluaran', 'transfer_list' => 'Tindak Lanjut', 'receipt_list' => 'Daftar Penerimaan', 'disposal_list' => 'Daftar Pengeluaran', 'stock' => 'Stok Barang'] as $key => $name) {
                 $code = 'TRANSACTION_'.strtoupper($key);
                 $child = $this->em->getRepository(Menu::class)->findOneBy(['code' => $code]);
                 if (!$child) {

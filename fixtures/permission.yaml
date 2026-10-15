@@ -30,7 +30,7 @@
 - { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#approver', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#transaction_receipt', addable: false, editable: false, viewable: false, deletable: false }
 - { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#approver', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#transaction_transfer', addable: false, editable: false, viewable: false, deletable: false }
 - { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#approver', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#transaction_disposal', addable: false, editable: false, viewable: false, deletable: false }
-- { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#approver', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#transaction_stock', addable: false, editable: false, viewable: true, deletable: false }
+- { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#approver', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#transaction_stock', addable: false, editable: false, viewable: false, deletable: false }
 - { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#approver', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#transaction_receipt_list', addable: false, editable: false, viewable: true, deletable: false }
 - { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#approver', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#transaction_disposal_list', addable: false, editable: false, viewable: true, deletable: false }
 - { group: 'ref:KejawenLab_ApiSkeleton_Entity_Group@group#approver', menu: 'ref:KejawenLab_ApiSkeleton_Entity_Menu@menu#transaction_transfer_list', addable: false, editable: false, viewable: true, deletable: false }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace KejawenLab\Application\Transaction;
 
 use Brick\Math\BigDecimal;
+use Brick\Math\BigRational;
 use Brick\Math\Exception\MathException;
 use Brick\Math\RoundingMode;
 use DateTimeImmutable;
@@ -47,9 +48,13 @@ final class TransactionService
         return $transaction;
     }
 
-    public function listing(int $page = 1, string $search = '', ?Type $type = null, ?string $organizationId = null): array
+    public function listing(int $page = 1, string $search = '', ?Type $type = null, ?string $organizationId = null, string $kind = 'all', string $status = 'all', bool $followup = false): array
     {
         $this->access->requirePermission('view');
+        if ($followup) {
+            $this->access->requireMenuPermission('TRANSACTION_TRANSFER_LIST', 'view');
+        }
+
         $allowedTypes = array_values(array_filter(Type::cases(), fn (Type $candidate): bool => $this->access->hasMenuPermission('TRANSACTION_'.$candidate->name.'_LIST', 'view')));
         if (!$allowedTypes || ($type && !in_array($type, $allowedTypes, true))) {
             throw new AccessDeniedHttpException('Hak akses daftar transaksi tidak mencukupi.');
@@ -61,8 +66,72 @@ final class TransactionService
             $query->andWhere('t.fromOrganization = :org OR t.toOrganization = :org')->setParameter('org', $org);
         }
 
+        if (!$this->access->isAdmin() && $this->access->isApprover()) {
+            $this->access->requirePermission('edit');
+            $query
+                ->andWhere('t.status = :submitted OR (t.status = :approved AND t.type <> :transfer)')
+                ->andWhere('(t.type = :receipt AND t.toOrganization = :reviewOrganization) OR (t.type <> :receipt AND t.fromOrganization = :reviewOrganization)')
+                ->andWhere('t.createdBy <> :reviewer')
+                ->setParameter('submitted', Status::SUBMITTED->value)
+                ->setParameter('approved', Status::APPROVED->value)
+                ->setParameter('transfer', Type::TRANSFER->value)
+                ->setParameter('receipt', Type::RECEIPT->value)
+                ->setParameter('reviewOrganization', $org)
+                ->setParameter('reviewer', $this->access->account());
+        }
+
         if (null !== $type) {
-            $query->andWhere('t.type = :type')->setParameter('type', $type->value);
+            if (in_array($type, [Type::RECEIPT, Type::DISPOSAL], true) && ($this->access->isAdmin() || ($org && $this->access->isOperator())) && in_array(Type::TRANSFER, $allowedTypes, true)) {
+                $relatedTransfer = 't.type = :relatedTransfer AND t.status IN (:transferStatuses)';
+                if ($org) {
+                    $relatedTransfer .= Type::RECEIPT === $type ? ' AND t.toOrganization = :org' : ' AND t.fromOrganization = :org';
+                }
+
+                $query
+                    ->andWhere('t.type = :type OR ('.$relatedTransfer.')')
+                    ->setParameter('relatedTransfer', Type::TRANSFER->value)
+                    ->setParameter('transferStatuses', [Status::COMPLETED->value, Status::CANCELLED->value]);
+            } else {
+                $query->andWhere('t.type = :type');
+            }
+
+            $query->setParameter('type', $type->value);
+        }
+
+        if ($followup || Type::TRANSFER === $type) {
+            $query->andWhere('t.status IN (:activeStatuses)')->setParameter('activeStatuses', [Status::SUBMITTED->value, Status::APPROVED->value, Status::RETURNED->value, Status::SENT->value]);
+            if (!$this->access->isAdmin() && $this->access->isOperator()) {
+                $query
+                    ->andWhere('(((t.type = :receiptType AND t.toOrganization = :org) OR (t.type <> :receiptType AND t.fromOrganization = :org)) AND t.status IN (:originStatuses)) OR (t.type = :transferType AND t.toOrganization = :org AND t.status = :awaitingReceipt)')
+                    ->setParameter('receiptType', Type::RECEIPT->value)
+                    ->setParameter('transferType', Type::TRANSFER->value)
+                    ->setParameter('originStatuses', [Status::SUBMITTED->value, Status::APPROVED->value, Status::RETURNED->value])
+                    ->setParameter('awaitingReceipt', Status::SENT->value);
+            }
+        }
+
+        if (!$followup && in_array($type, [Type::RECEIPT, Type::DISPOSAL], true)) {
+            $query->andWhere('t.status IN (:finalStatuses)')->setParameter('finalStatuses', [Status::COMPLETED->value, Status::CANCELLED->value]);
+        }
+
+        $kindOptions = $followup ? ['receipt' => Type::RECEIPT, 'transfer' => Type::TRANSFER, 'disposal' => Type::DISPOSAL] : ['direct' => $type, 'transfer' => Type::TRANSFER];
+        if ('all' !== $kind && !array_key_exists($kind, $kindOptions)) {
+            throw new BadRequestHttpException('Jenis transaksi tidak valid.');
+        }
+
+        if (($followup || in_array($type, [Type::RECEIPT, Type::DISPOSAL], true)) && 'all' !== $kind) {
+            $query->andWhere('t.type = :kindType')->setParameter('kindType', $kindOptions[$kind]->value);
+        }
+
+        $statusOptions = $followup || Type::TRANSFER === $type
+            ? ['submitted' => Status::SUBMITTED, 'approved' => Status::APPROVED, 'returned' => Status::RETURNED, 'sent' => Status::SENT]
+            : ['completed' => Status::COMPLETED, 'cancelled' => Status::CANCELLED];
+        if ('all' !== $status && !isset($statusOptions[$status])) {
+            throw new BadRequestHttpException('Status transaksi tidak valid.');
+        }
+
+        if (($followup || null !== $type) && 'all' !== $status) {
+            $query->andWhere('t.status = :filterStatus')->setParameter('filterStatus', $statusOptions[$status]->value);
         }
 
         if (null !== $organizationId && '' !== $organizationId && $this->access->isAdmin()) {
@@ -84,23 +153,39 @@ final class TransactionService
 
         $amounts = [];
         foreach ($rows as $transaction) {
-            if (Type::RECEIPT === $transaction->getType()) {
-                $amounts[$transaction->getId()] = $this->receiptAmount($transaction);
-            }
+            $amounts[$transaction->getId()] = $this->transactionAmount($transaction);
         }
 
         return ['items' => $rows, 'total' => (int) $total, 'page' => max(1, $page), 'amounts' => $amounts];
     }
 
-    private function receiptAmount(Transaction $transaction): array
+    private function transactionAmount(Transaction $transaction): array
     {
-        $total = BigDecimal::of(0);
+        $total = BigRational::of(0);
         foreach ($this->lines($transaction) as $line) {
-            if (null === $line->getPrice()) {
-                return ['value' => null, 'estimated' => false];
+            if (Type::RECEIPT === $transaction->getType()) {
+                if (null === $line->getPrice()) {
+                    return ['value' => null, 'estimated' => false];
+                }
+
+                $total = $total->plus(BigRational::of($line->getQty())->multipliedBy($line->getPrice()));
+                continue;
             }
 
-            $total = $total->plus(BigDecimal::of($line->getQty())->multipliedBy($line->getPrice()));
+            $allocated = BigDecimal::of(0);
+            foreach ($this->em->getRepository(TransactionItemAllocation::class)->findBy(['transactionItem' => $line]) as $allocation) {
+                $receipt = $allocation->getStockLot()->getReceiptItem();
+                if (null === $receipt->getPrice() || !BigDecimal::of($receipt->getConversionFactor())->isPositive()) {
+                    return ['value' => null, 'estimated' => false];
+                }
+
+                $allocated = $allocated->plus($allocation->getBaseQty());
+                $total = $total->plus(BigRational::of($allocation->getBaseQty())->multipliedBy($receipt->getPrice())->dividedBy($receipt->getConversionFactor()));
+            }
+
+            if (!$allocated->isEqualTo($line->getBaseQty())) {
+                return ['value' => null, 'estimated' => false];
+            }
         }
 
         return ['value' => (string) $total->toScale(2, RoundingMode::HalfUp), 'estimated' => false];

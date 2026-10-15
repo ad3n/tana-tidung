@@ -253,7 +253,7 @@ transaction.taken_qty: Jumlah Diambil
 transaction.received_qty: Jumlah Diterima
 transaction.batch_pending: Rincian pengambilan batch tersedia setelah transaksi dikirim atau diselesaikan.
 transaction.list.1: Daftar Penerimaan
-transaction.list.2: Daftar Transfer
+transaction.list.2: Tindak Lanjut
 transaction.list.3: Daftar Pengeluaran
 transaction.reference_sk: No SK
 transaction.search_sk: Cari nomor transaksi atau SK
@@ -286,7 +286,7 @@ transaction.stock_batch_action: Detail Batch
 transaction.price: Harga Satuan
 transaction.price_help: Harga per satuan yang dipilih, maksimal 2 angka desimal.
 
-transaction.total_amount: Total
+transaction.total_amount: Jumlah
 
 transaction.location.RESERVED: Dicadangkan
 transaction.reserved_qty: Jumlah Dicadangkan
@@ -298,3 +298,15 @@ entity.add: Tambah
 entity.edit: Ubah
 entity.close: Tutup
 entity.empty: Belum ada data.
+
+transaction.direct_receipt: Penerimaan Langsung
+transaction.incoming_transfer: Transfer Masuk
+transaction.outgoing_transfer: Transfer Keluar
+transaction.direct_disposal: Pengeluaran Langsung
+transaction.receipt_reference: No Faktur / No SK
+
+transaction.filter_kind: Jenis
+transaction.all_kinds: Semua
+transaction.list.destination: Tujuan
+transaction.all_statuses: Semua Status
+transaction.search_followup: Cari nomor transaksi, faktur, atau SK

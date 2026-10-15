@@ -20,7 +20,10 @@ final class Listing extends AbstractController
     public function __invoke(Request $request, TransactionService $service, TransactionAccess $access, int $transactionType): Response
     {
         $type = TransactionType::from($transactionType);
+        $followup = TransactionType::TRANSFER === $type;
         $isAdmin = $access->isAdmin();
+        $kind = $request->query->getString('kind', 'all');
+        $status = $request->query->getString('status', 'all');
         $organizationId = $isAdmin ? ($request->query->getString('organization_id') ?: null) : null;
 
         return $this->render('transaction/all.html.twig', [
@@ -30,8 +33,11 @@ final class Listing extends AbstractController
             'show_origin' => $isAdmin,
             'organizations' => $isAdmin ? $service->stockOrganizations() : [],
             'selected_organization' => $organizationId,
-            'search_label' => TransactionType::RECEIPT === $type ? 'transaction.search' : 'transaction.search_sk',
-            'list' => $service->listing($request->query->getInt('page', 1), $request->query->getString('q'), $type, $organizationId),
+            'selected_kind' => $kind,
+            'selected_status' => $status,
+            'followup_statuses' => !$isAdmin && $access->isApprover() ? ['submitted' => 5] : ['submitted' => 5, 'approved' => 6, 'returned' => 7, 'sent' => 2],
+            'search_label' => $followup ? 'transaction.search_followup' : (TransactionType::RECEIPT === $type ? 'transaction.search' : 'transaction.search_sk'),
+            'list' => $service->listing($request->query->getInt('page', 1), $request->query->getString('q'), $followup ? null : $type, $organizationId, $kind, $status, $followup),
         ]);
     }
 }

@@ -727,7 +727,7 @@ docker compose exec app php tests/item-conversions-smoke.php
 Menu Transaksi mendukung penerimaan eksternal, transfer antar-SKPD/OPD, dan
 pengeluaran akhir melalui submenu Penerimaan, Transfer, Pengeluaran, serta Stok Barang. Masing-masing
 submenu form menetapkan jenis transaksi secara otomatis. Daftar Penerimaan, Daftar
-Pengeluaran, dan Daftar Transfer berada pada submenu terpisah, masing-masing dengan
+Pengeluaran, dan Tindak Lanjut berada pada submenu terpisah, masing-masing dengan
 pencarian dan pagination. Tombol Ajukan langsung menyimpan transaksi dengan status Diajukan.
 Form mengikuti susunan Sibaper lama: informasi transaksi di atas, tabel barang
 selebar halaman, dan Tambah Barang melalui modal. Header dan beberapa detail dapat
@@ -799,7 +799,9 @@ organisasinya. Pengurus Barang tujuan transfer atau super admin dapat menerima.
 
 Group `OPRTR` (Operator) memiliki akses input, pengajuan, revisi, daftar transaksi dan stok sesuai SKPD/OPD. Operator tidak dapat menyetujui atau menyelesaikan pengeluaran. Operator asal menekan Kirim pada transfer yang disetujui; Operator tujuan menekan Terima. Semua menu non-transaksi memiliki mapping permission false.
 
-Group `APPRV` tidak melihat atau mengakses halaman input Penerimaan/Transfer/Pengeluaran. APPRV memverifikasi penerimaan milik organisasinya dan menyetujui pengeluaran/
+Daftar transaksi Operator menampilkan seluruh status dalam SKPD/OPD-nya, termasuk transfer masuk dan keluar. Daftar APPRV hanya menampilkan transaksi yang masih perlu persetujuannya: penerimaan di SKPD/OPD tujuan, serta transfer dan pengeluaran di SKPD/OPD asal. Transaksi buatan sendiri dikecualikan dari antrean APPRV. Filter berlaku sebelum pagination dan perhitungan jumlah, baik pada admin maupun API. Super admin tetap melihat semua status dan SKPD/OPD.
+
+Group `APPRV` hanya melihat submenu Daftar Penerimaan, Tindak Lanjut, dan Daftar Pengeluaran yang perlu disetujui. APPRV tidak melihat atau mengakses halaman input Penerimaan/Transfer/Pengeluaran maupun Stok Barang (termasuk API stok). APPRV memverifikasi penerimaan milik organisasinya dan menyetujui pengeluaran/
 transfer dari organisasinya. Approver tujuan transfer tidak dapat menyetujui
 pengeluaran pihak asal. APPRV tidak dapat membuat atau mengubah isi transaksi,
 mengajukan, mengirim, maupun mengonfirmasi penerimaan transfer. Pembuat transaksi
@@ -974,10 +976,7 @@ yang dipilih, disimpan sebagai DECIMAL(20,2). Nilai nol diperbolehkan; nilai neg
 lebih dari dua angka desimal, dan harga pada transfer/pengeluaran ditolak. Harga kosong atau tidak dikirim ditolak. Harga penerimaan lama diisi Rp10.000.000,00. Harga dipertahankan saat revisi
 dan ditampilkan pada tabel input serta detail penerimaan.
 
-Kolom Total hanya ditampilkan pada Daftar Penerimaan, dihitung dari penjumlahan
-jumlah × harga per satuan input seluruh barang. Perhitungan memakai decimal dan
-dibulatkan HALF_UP ke dua desimal pada hasil akhir. Daftar Transfer dan Daftar
-Pengeluaran tidak menampilkan atau menghitung total harga.
+Kolom Jumlah ditampilkan pada Daftar Penerimaan, Transfer, dan Pengeluaran. Penerimaan langsung memakai jumlah × harga per satuan input. Transfer masuk/keluar dan pengeluaran memakai penjumlahan setiap alokasi batch: jumlah satuan dasar × harga satuan penerimaan asal ÷ faktor konversi penerimaan asal. Harga asal tetap dipakai setelah transfer antar-SKPD/OPD. Perhitungan memakai bilangan rasional dan dibulatkan HALF_UP ke dua desimal hanya pada hasil akhir. Alokasi belum lengkap atau harga asal tidak tersedia ditampilkan "-", bukan nol atau estimasi. Perhitungan hanya membaca data tanpa membuat transaksi atau mutasi stok baru.
 
 Transfer yang Disetujui mencadangkan stok per batch secara atomik dengan advisory
 lock yang sama dengan pembukuan stok. Cadangan tidak masuk stok tersedia pada
@@ -1046,3 +1045,25 @@ jenis kerentanan. Deployment publik tetap wajib memakai APP_ENV=prod,
 APP_DEBUG=0, HTTPS, kredensial produksi yang berbeda, serta tidak mengekspos
 port database/broker. Audit infrastruktur eksternal dan penetration test
 menyeluruh belum dilakukan.
+
+Daftar Penerimaan Operator juga menampilkan transfer berstatus Selesai atau Dibatalkan dengan SKPD/OPD tujuan sesuai akun. Baris ditandai Penerimaan Langsung atau Transfer Masuk; transfer memakai No SK, SKPD/OPD pengirim, dan nilai berdasarkan alokasi batch. Tampilan ini membaca transaksi transfer yang sama tanpa membuat transaksi atau mutasi stok baru.
+
+Super admin juga melihat Transfer Masuk yang selesai atau dibatalkan pada Daftar Penerimaan. Filter SKPD/OPD pada daftar ini mengikuti tujuan penerimaan maupun tujuan transfer; tanpa filter, seluruh SKPD/OPD ditampilkan.
+
+Daftar Pengeluaran Operator asal dan super admin juga menampilkan transfer berstatus Selesai atau Dibatalkan, dengan penanda Transfer Keluar atau Pengeluaran Langsung. Filter SKPD/OPD mengikuti asal transaksi. Transaksi yang masih Diajukan, Disetujui, Perlu Revisi, atau Dikirim tidak disertakan; tampilan hanya membaca transaksi asli tanpa membuat transaksi maupun mutasi stok tambahan.
+
+Daftar Penerimaan dan Daftar Pengeluaran menyediakan filter jenis Semua, Langsung, atau Transfer Masuk/Keluar. Filter digabungkan dengan pencarian, SKPD/OPD dan batasan status/peran sebelum menghitung pagination; pilihan tetap terbawa pada tautan halaman.
+
+Menu Tindak Lanjut berada di atas Daftar Penerimaan dan mencakup penerimaan, transfer, serta pengeluaran aktif. Operator melihat pengajuan/revisi milik SKPD/OPD-nya (tujuan untuk penerimaan, asal untuk pengeluaran/transfer), transfer yang siap dikirim, dan transfer masuk yang perlu diterima. Approver melihat transaksi yang boleh disetujuinya. Super admin melihat seluruh transaksi aktif, dengan filter SKPD/OPD yang tetap berlaku. Selesai/Dibatalkan tidak masuk antrean. Transfer Dibatalkan tersimpan dalam tampilan riwayat pengeluaran asal dan penerimaan tujuan, tanpa mutasi stok tambahan.
+
+Filter status pada Daftar Penerimaan/Pengeluaran: Semua Status, Selesai, dan Dibatalkan. Filter mempersempit data sesuai jenis, SKPD/OPD serta kewenangan pengguna sebelum menghitung pagination. Semua Status hanya mencakup Selesai/Dibatalkan; filter Selesai/Dibatalkan tidak membuka riwayat di luar hak akses Approver.
+
+Tindak Lanjut menyediakan filter Semua Status, Diajukan, Disetujui, Perlu Revisi, dan Dikirim. Filter hanya mempersempit antrean yang diizinkan per peran/SKPD; status Selesai dan Dibatalkan tidak diterima pada antrean ini. Pilihan filter tetap tersimpan saat pagination dan pencarian.
+
+Pilihan status Tindak Lanjut mengikuti peran: Approver hanya Semua Status/Diajukan; Operator dan super admin mendapat seluruh status aktif dengan cakupan antrean tetap dibatasi. Daftar Penerimaan/Pengeluaran hanya memuat status final dan tidak menyediakan pilihan Perlu Tindak Lanjut. Perubahan jenis, status, dan SKPD/OPD langsung mengirim form filter GET serta kembali ke halaman pertama; pencarian dan filter lain tetap ikut terkirim. Filter SKPD/OPD Stok Barang juga langsung diterapkan.
+
+Filter status Tindak Lanjut disembunyikan bagi Approver karena antreannya hanya berisi Diajukan. Semua Status tidak memberi akses ke status lain; batasan server tetap berlaku. Filter jenis tetap tersedia di samping searchbox.
+
+Antrean gabungan tetap memeriksa permission daftar tiap jenis transaksi, serta permission menu Tindak Lanjut. Setiap baris diberi penanda Penerimaan, Transfer, atau Pengeluaran dan memakai tautan detail asli. Tidak ada penyalinan transaksi atau mutasi stok untuk tampilan ini.
+
+Filter jenis Tindak Lanjut: Semua, Penerimaan, Transfer, dan Pengeluaran. Pilihan langsung diterapkan, digabungkan dengan status, SKPD/OPD, dan pencarian sebelum pagination. Permission tiap jenis tetap diperiksa; filter tidak memperluas akses pengguna.

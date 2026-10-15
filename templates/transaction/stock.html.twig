@@ -59,5 +59,11 @@
 {% endblock %}
 {% block javascripts %}
     <script src="{{ asset('plugins/select2/js/select2.full.min.js') }}"></script>
-    <script>$(function () { $('#stock-organization').select2({theme: 'bootstrap4', width: '100%'}); });</script>
+    <script>
+        $(function () {
+            $('#stock-organization').select2({theme: 'bootstrap4', width: '100%'}).on('change', function () {
+                this.form.requestSubmit();
+            });
+        });
+    </script>
 {% endblock %}

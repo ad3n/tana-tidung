@@ -1,6 +1,7 @@
 {% extends 'transaction/base.html.twig' %}
 {% trans_default_domain 'pages' %}
 {% block content %}
+    {% set show_status_filter = not is_transfer or followup_statuses|length > 1 %}
     <div class="row" id="transaction-list">
         <div class="col-12">
             <div class="card">
@@ -8,14 +9,42 @@
                     <h4>{{ page_title|trans }}</h4>
                     <form method="get" class="row">
                         {% if show_origin %}
-                            <div class="col-md-5 mb-2 mb-md-0">
+                            <div class="col-md-3 mb-2 mb-md-0">
                                 <select id="transaction-list-organization" name="organization_id" class="form-control select2" aria-label="{{ 'transaction.organization'|trans }}">
                                     <option value="">{{ 'transaction.all_organizations'|trans }}</option>
                                     {% for organization in organizations %}<option value="{{ organization.id }}" {% if selected_organization == organization.id %}selected{% endif %}>{{ organization.name }}</option>{% endfor %}
                                 </select>
                             </div>
                         {% endif %}
-                        <div class="{{ show_origin ? 'col-md-7' : 'col-12' }}">
+                        <div class="col-md-3 mb-2 mb-md-0">
+                            <select id="transaction-list-kind" name="kind" class="form-control select2" aria-label="{{ 'transaction.filter_kind'|trans }}">
+                                <option value="all" {% if selected_kind == 'all' %}selected{% endif %}>{{ 'transaction.all_kinds'|trans }}</option>
+                                {% if is_transfer %}
+                                    {% for value, code in {receipt: 1, transfer: 2, disposal: 3} %}
+                                        <option value="{{ value }}" {% if selected_kind == value %}selected{% endif %}>{{ ('transaction.type.' ~ code)|trans }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option value="direct" {% if selected_kind == 'direct' %}selected{% endif %}>{{ (is_receipt ? 'transaction.direct_receipt' : 'transaction.direct_disposal')|trans }}</option>
+                                    <option value="transfer" {% if selected_kind == 'transfer' %}selected{% endif %}>{{ (is_receipt ? 'transaction.incoming_transfer' : 'transaction.outgoing_transfer')|trans }}</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        {% if show_status_filter %}
+                            <div class="{{ show_origin ? 'col-md-2' : 'col-md-3' }} mb-2 mb-md-0">
+                                <select id="transaction-list-status" name="status" class="form-control select2" aria-label="{{ 'transaction.status'|trans }}">
+                                    <option value="all" {% if selected_status == 'all' %}selected{% endif %}>{{ 'transaction.all_statuses'|trans }}</option>
+                                    {% if is_transfer %}
+                                        {% for value, code in followup_statuses %}
+                                            <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ ('transaction.status.' ~ code)|trans }}</option>
+                                        {% endfor %}
+                                    {% else %}
+                                        <option value="completed" {% if selected_status == 'completed' %}selected{% endif %}>{{ 'transaction.status.3'|trans }}</option>
+                                        <option value="cancelled" {% if selected_status == 'cancelled' %}selected{% endif %}>{{ 'transaction.status.4'|trans }}</option>
+                                    {% endif %}
+                                </select>
+                            </div>
+                        {% endif %}
+                        <div class="{{ not show_status_filter ? 'col-md-9' : (show_origin ? 'col-md-4' : 'col-md-6') }}">
                             <div class="input-group">
                                 <input type="search" id="transaction-list-search" name="q" class="form-control" value="{{ app.request.query.get('q') }}" placeholder="{{ search_label|trans }}" aria-label="{{ search_label|trans }}">
                                 <div class="input-group-append">
@@ -31,33 +60,43 @@
                         <tr>
                             <th>{{ 'transaction.code'|trans }}</th>
                             {% if is_receipt %}
-                                <th>{{ 'transaction.reference'|trans }}</th>
+                                <th>{{ 'transaction.receipt_reference'|trans }}</th>
                                 {% if show_origin %}<th>{{ 'transaction.organization'|trans }}</th>{% endif %}
                                 <th>{{ 'transaction.fiscal_year'|trans }}</th>
                                 <th>{{ 'transaction.list.source'|trans }}</th>
                             {% elseif is_transfer %}
-                                <th>{{ 'transaction.reference_sk'|trans }}</th>
+                                <th>{{ 'transaction.receipt_reference'|trans }}</th>
                                 {% if show_origin %}<th>{{ 'transaction.from'|trans }}</th>{% endif %}
                                 <th>{{ 'transaction.to'|trans }}</th>
                                 <th>{{ 'transaction.fiscal_year'|trans }}</th>
                             {% else %}
                                 <th>{{ 'transaction.reference_sk'|trans }}</th>
                                 {% if show_origin %}<th>{{ 'transaction.organization'|trans }}</th>{% endif %}
+                                <th>{{ 'transaction.list.destination'|trans }}</th>
                                 <th>{{ 'transaction.fiscal_year'|trans }}</th>
                             {% endif %}
-                            {% if is_receipt %}<th class="text-right">{{ 'transaction.total_amount'|trans }}</th>{% endif %}
+                            <th class="text-right">{{ 'transaction.total_amount'|trans }}</th>
                             <th>{{ 'transaction.status'|trans }}</th>
                             <th class="transaction-table-actions">{{ 'transaction.actions'|trans }}</th>
                         </tr>
                     </thead><tbody>
                     {% for transaction in list.items %}
                         <tr>
-                            <td>{{ transaction.code }}<br><small>{{ transaction.date|date('d-m-Y') }}</small></td>
+                            <td>
+                                {{ transaction.code }}<br><small>{{ transaction.date|date('d-m-Y') }}</small>
+                                {% if is_receipt %}
+                                    <br><span class="badge {{ transaction.type.value == 2 ? 'badge-info' : 'badge-secondary' }}">{{ (transaction.type.value == 2 ? 'transaction.incoming_transfer' : 'transaction.direct_receipt')|trans }}</span>
+                                {% elseif not is_transfer %}
+                                    <br><span class="badge {{ transaction.type.value == 2 ? 'badge-info' : 'badge-secondary' }}">{{ (transaction.type.value == 2 ? 'transaction.outgoing_transfer' : 'transaction.direct_disposal')|trans }}</span>
+                                {% else %}
+                                    <br><span class="badge badge-info">{{ ('transaction.type.' ~ transaction.type.value)|trans }}</span>
+                                {% endif %}
+                            </td>
                             {% if is_receipt %}
                                 <td>{{ transaction.referenceNumber|default('-') }}</td>
                                 {% if show_origin %}<td>{{ transaction.toOrganization ? transaction.toOrganization.name : '-' }}</td>{% endif %}
                                 <td>{{ transaction.fiscalYear.year }}</td>
-                                <td>{{ transaction.source ? transaction.source.name : '-' }}</td>
+                                <td>{{ transaction.type.value == 2 ? transaction.fromOrganization.name : (transaction.source ? transaction.source.name : '-') }}</td>
                             {% elseif is_transfer %}
                                 <td>{{ transaction.referenceNumber|default('-') }}</td>
                                 {% if show_origin %}<td>{{ transaction.fromOrganization ? transaction.fromOrganization.name : '-' }}</td>{% endif %}
@@ -66,25 +105,24 @@
                             {% else %}
                                 <td>{{ transaction.referenceNumber|default('-') }}</td>
                                 {% if show_origin %}<td>{{ transaction.fromOrganization ? transaction.fromOrganization.name : '-' }}</td>{% endif %}
+                                <td>{{ transaction.type.value == 2 and transaction.toOrganization ? transaction.toOrganization.name : '-' }}</td>
                                 <td>{{ transaction.fiscalYear.year }}</td>
                             {% endif %}
-                            {% if is_receipt %}
-                                {% set amount = list.amounts[transaction.id] %}
-                                <td class="text-right text-nowrap">
-                                    {{ amount.value is not null ? 'Rp ' ~ (amount.value|number_format(2, ',', '.')) : '-' }}
-                                </td>
-                            {% endif %}
+                            {% set amount = list.amounts[transaction.id]|default({value: null}) %}
+                            <td class="text-right text-nowrap">
+                                {{ amount.value is not null ? 'Rp ' ~ (amount.value|number_format(2, ',', '.')) : '-' }}
+                            </td>
                             <td>{% include 'transaction/status.html.twig' %}</td>
                             <td class="transaction-table-actions"><a class="btn btn-sm btn-outline-secondary" href="{{ path('KejawenLab\\Application\\Admin\\Controller\\Transaction\\Get', {id: transaction.id}) }}">{{ 'transaction.view'|trans }}</a></td>
                         </tr>
-                    {% else %}<tr><td colspan="{{ is_receipt ? (show_origin ? 8 : 7) : (is_transfer ? (show_origin ? 7 : 6) : (show_origin ? 6 : 5)) }}">{{ 'transaction.empty'|trans }}</td></tr>{% endfor %}
+                    {% else %}<tr><td colspan="{{ show_origin ? 8 : 7 }}">{{ 'transaction.empty'|trans }}</td></tr>{% endfor %}
                     </tbody></table>
                 </div>
                 {% if list.total > 25 or list.page > 1 %}
                 <div class="card-footer">
-                    {% if list.page > 1 %}<a class="btn btn-outline-secondary" href="{{ path(app.request.attributes.get('_route'), {page: list.page - 1, q: app.request.query.get('q'), organization_id: selected_organization}) }}">←</a>{% endif %}
+                    {% if list.page > 1 %}<a class="btn btn-outline-secondary" href="{{ path(app.request.attributes.get('_route'), {page: list.page - 1, q: app.request.query.get('q'), organization_id: selected_organization, kind: selected_kind, status: selected_status}) }}">←</a>{% endif %}
                     {{ list.page }}
-                    {% if list.total > list.page * 25 %}<a class="btn btn-outline-secondary" href="{{ path(app.request.attributes.get('_route'), {page: list.page + 1, q: app.request.query.get('q'), organization_id: selected_organization}) }}">→</a>{% endif %}
+                    {% if list.total > list.page * 25 %}<a class="btn btn-outline-secondary" href="{{ path(app.request.attributes.get('_route'), {page: list.page + 1, q: app.request.query.get('q'), organization_id: selected_organization, kind: selected_kind, status: selected_status}) }}">→</a>{% endif %}
                 </div>
                 {% endif %}
             </div>
@@ -93,5 +131,12 @@
 {% endblock %}
 {% block javascripts %}
     <script src="{{ asset('plugins/select2/js/select2.full.min.js') }}"></script>
-    <script>$(function () { $('#transaction-list-organization').select2({theme: 'bootstrap4', width: '100%'}); });</script>
+    <script>
+        $(function () {
+            $('#transaction-list-organization, #transaction-list-kind, #transaction-list-status').select2({theme: 'bootstrap4', width: '100%'});
+            $('#transaction-list-organization, #transaction-list-kind, #transaction-list-status').on('change', function () {
+                this.form.requestSubmit();
+            });
+        });
+    </script>
 {% endblock %}
