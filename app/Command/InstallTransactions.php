@@ -16,6 +16,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Yaml\Yaml;
 
 #[AsCommand(name: 'app:transactions:install', description: 'Install transaction menu, permissions and database constraints without reloading fixtures.')]
 final class InstallTransactions extends Command
@@ -30,10 +31,11 @@ final class InstallTransactions extends Command
         $this->em->wrapInTransaction(function (): void {
             $this->em->getConnection()->executeStatement("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS workflow_history JSON NOT NULL DEFAULT '[]'");
             $this->em->getConnection()->executeStatement('ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transaction_status_valid');
+            $this->em->getConnection()->executeStatement("UPDATE transactions SET status = 7, workflow_history = (workflow_history::jsonb || jsonb_build_array(jsonb_build_object('action', 'return', 'status', 7, 'actor_id', NULL, 'actor_name', 'Sistem', 'at', CURRENT_TIMESTAMP, 'note', 'Draft lama dipindahkan untuk dilengkapi dan diajukan.')))::json WHERE status = 1");
             $checks = [
                 'transactions' => [
                     'transaction_type_valid' => 'type IN (1,2,3)',
-                    'transaction_status_valid' => 'status IN (1,2,3,4,5,6,7) AND (status <> 2 OR type = 2) AND (status <> 6 OR type <> 1)',
+                    'transaction_status_valid' => 'status IN (2,3,4,5,6,7) AND (status <> 2 OR type = 2) AND (status <> 6 OR type <> 1)',
                     'transaction_organizations_valid' => '(type = 1 AND from_organization_id IS NULL AND to_organization_id IS NOT NULL AND source_id IS NOT NULL) OR (type = 2 AND from_organization_id IS NOT NULL AND to_organization_id IS NOT NULL AND from_organization_id <> to_organization_id AND source_id IS NULL) OR (type = 3 AND from_organization_id IS NOT NULL AND to_organization_id IS NULL AND source_id IS NULL AND notes IS NOT NULL AND LENGTH(TRIM(notes)) > 0)',
                 ],
                 'transaction_items' => ['transaction_quantities_positive' => 'qty > 0 AND conversion_factor > 0 AND base_qty > 0 AND base_qty = qty * conversion_factor'],
@@ -116,10 +118,62 @@ final class InstallTransactions extends Command
                     $this->em->persist($childPermission);
                 }
             }
+
+            $this->em->flush();
+            $this->syncWorkflowPermissions();
         });
         $this->em->getConfiguration()->getResultCache()?->clear();
         $output->writeln('Transaction menu and constraints installed. Configure non-admin groups through Group permissions.');
 
         return Command::SUCCESS;
+    }
+
+    private function syncWorkflowPermissions(): void
+    {
+        $directory = dirname(__DIR__, 2).'/fixtures/';
+        $menuCodes = [];
+        foreach (Yaml::parseFile($directory.'menu.yaml') as $fixture) {
+            $menuCodes[$fixture['ref']] = $fixture['code'];
+        }
+
+        $fixtures = Yaml::parseFile($directory.'permission.yaml');
+        foreach (['approver' => ['APPRV', 'Approver'], 'operator' => ['OPRTR', 'Operator']] as $ref => [$code, $name]) {
+            $group = $this->em->getRepository(Group::class)->findOneBy(['code' => $code]);
+            if (!$group) {
+                $group = new Group();
+                $group->setCode($code);
+                $group->setName($name);
+                $this->em->persist($group);
+                $this->em->flush();
+            }
+
+            $expected = [];
+            foreach ($fixtures as $fixture) {
+                if (str_ends_with($fixture['group'], '#'.$ref)) {
+                    $expected[$menuCodes[explode('#', $fixture['menu'])[1]]] = $fixture;
+                }
+            }
+
+            foreach ($this->em->getRepository(Menu::class)->findAll() as $menu) {
+                $permissions = $this->em->getRepository(Permission::class)->findBy(['group' => $group, 'menu' => $menu]);
+                $permission = array_shift($permissions);
+                foreach ($permissions as $duplicate) {
+                    $this->em->remove($duplicate);
+                }
+
+                if (!$permission) {
+                    $permission = new Permission();
+                    $permission->setGroup($group);
+                    $permission->setMenu($menu);
+                    $this->em->persist($permission);
+                }
+
+                $flags = $expected[$menu->getCode()] ?? [];
+                $permission->setAddable($flags['addable'] ?? false);
+                $permission->setEditable($flags['editable'] ?? false);
+                $permission->setViewable($flags['viewable'] ?? false);
+                $permission->setDeletable($flags['deletable'] ?? false);
+            }
+        }
     }
 }

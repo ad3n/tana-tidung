@@ -28,7 +28,7 @@ final class Get extends AbstractController
             }
 
             if (TransactionStatus::RETURNED !== $transaction->getStatus()) {
-                throw new ConflictHttpException('Revisi hanya tersedia untuk transaksi Dikembalikan.');
+                throw new ConflictHttpException('Revisi hanya tersedia untuk transaksi Perlu Revisi.');
             }
         }
 
@@ -51,7 +51,6 @@ final class Get extends AbstractController
             try {
                 match ($operation) {
                     'revision' => $service->revise($id, $input),
-                    'header' => $service->saveDraft($input, $id),
                     'line' => $service->addLine($id, $input),
                     'remove_line' => $service->removeLine($id, (string) ($input['line_id'] ?? '')),
                     'submit', 'verify', 'approve', 'return', 'post', 'send', 'receive', 'cancel' => $service->transition($id, $operation, $request->request->getString('note')),

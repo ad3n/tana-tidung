@@ -76,18 +76,3 @@
 .transaction-invoice > .transaction-invoice-items {
     padding-top: 0;
 }
-
-.transaction-invoice-items > .table > thead > tr > th {
-    border-top: 1px solid #e5eaf0;
-    border-bottom: 1px solid #e5eaf0;
-    background: #f8fafc;
-    color: #52647a;
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-.transaction-invoice-items > .table > tbody > tr > td {
-    vertical-align: top;
-    padding-top: 1rem;
-    padding-bottom: 1rem;
-}

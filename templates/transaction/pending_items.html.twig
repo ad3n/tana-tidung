@@ -1,0 +1,14 @@
+{% trans_default_domain 'pages' %}
+<table class="table mb-0">
+    <thead>
+        <tr>
+            {% for label in ['item_code', 'item', 'qty', 'unit', 'batch', 'expiry'] %}
+                <th>{{ ('transaction.' ~ label)|trans }}</th>
+            {% endfor %}
+            {% if transaction_type != 1 %}<th>{{ 'transaction.available_stock'|trans }}</th>{% endif %}
+            <th>{{ 'transaction.actions'|trans }}</th>
+        </tr>
+    </thead>
+    <tbody id="transaction-pending-items"></tbody>
+</table>
+<p id="transaction-empty-items" class="text-muted mb-0">{{ 'transaction.empty_items'|trans }}</p>

@@ -21,7 +21,11 @@ final class Main extends AbstractController
     #[Route('/transactions/disposals', name: self::class.'_disposal', defaults: ['transactionType' => 3], methods: ['GET', 'POST'], priority: 2)]
     public function __invoke(Request $request, TransactionService $service, int $transactionType = 1): Response
     {
-        $service->access->requirePermission('view');
+        $service->access->requirePermission('add');
+        if ($service->access->isApprover() && !$service->access->isAdmin()) {
+            throw $this->createAccessDeniedException();
+        }
+
         $error = null;
         $type = TransactionType::from($transactionType);
         $values = ['type' => $type->value];
@@ -35,7 +39,7 @@ final class Main extends AbstractController
                     throw new BadRequestHttpException('Format detail barang tidak valid.');
                 }
 
-                $transaction = $service->createDraftWithLines($header, $lines);
+                $transaction = $service->submitWithLines($header, $lines);
 
                 return $this->redirectToRoute(Get::class, ['id' => $transaction->getId()], 303);
             } catch (HttpExceptionInterface $exception) {

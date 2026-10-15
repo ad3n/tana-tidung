@@ -82,7 +82,7 @@ final class TransactionService
         return $this->em->getRepository(TransactionItem::class)->findBy(['transaction' => $transaction], ['id' => 'ASC']);
     }
 
-    public function saveDraft(array $input, ?string $id = null): Transaction
+    private function saveHeader(array $input, ?string $id = null): Transaction
     {
         $this->access->requirePermission($id ? 'edit' : 'add');
         if ($this->access->isApprover() && !$this->access->isAdmin()) {
@@ -92,9 +92,13 @@ final class TransactionService
         return $this->locked(function () use ($input, $id): Transaction {
             $this->keys($input, ['type', 'date', 'from_organization_id', 'to_organization_id', 'source_id', 'reference_number', 'notes']);
             $transaction = $id ? $this->get($id) : new Transaction();
+            if (!$id) {
+                $transaction->setStatus(Status::RETURNED);
+            }
+
             if ($id) {
                 $this->em->refresh($transaction);
-                $this->draftOwner($transaction);
+                $this->editableOwner($transaction);
             }
 
             $typeValue = $this->text($input, 'type');
@@ -104,7 +108,7 @@ final class TransactionService
             }
 
             if ($id && $transaction->getType() !== $type) {
-                throw new ConflictHttpException('Jenis transaksi tidak dapat diubah. Buat draft baru.');
+                throw new ConflictHttpException('Jenis transaksi tidak dapat diubah. Buat transaksi baru.');
             }
 
             $year = $id ? $transaction->getFiscalYear() : $this->em->getRepository(FiscalYear::class)->findOneBy(['status' => true]);
@@ -184,21 +188,26 @@ final class TransactionService
             }
 
             if ($id) {
-                $this->validateDraftStock($transaction);
+                $this->validateStock($transaction);
             }
 
             return $transaction;
         });
     }
 
-    public function createDraftWithLines(array $header, array $lines): Transaction
+    public function submitWithLines(array $header, array $lines): Transaction
     {
-        if (count($lines) > 100) {
-            throw new BadRequestHttpException('Maksimal 100 detail barang per transaksi.');
+        $this->access->requirePermission('add');
+        if ($this->access->isApprover() && !$this->access->isAdmin()) {
+            throw new AccessDeniedHttpException('Approver hanya dapat memeriksa pengajuan transaksi.');
+        }
+
+        if (!$lines || count($lines) > 100) {
+            throw new BadRequestHttpException('Transaksi wajib berisi 1 sampai 100 detail barang.');
         }
 
         return $this->locked(function () use ($header, $lines): Transaction {
-            $transaction = $this->saveDraft($header);
+            $transaction = $this->saveHeader($header);
             foreach ($lines as $line) {
                 if (!is_array($line)) {
                     throw new BadRequestHttpException('Format detail barang tidak valid.');
@@ -206,6 +215,8 @@ final class TransactionService
 
                 $this->addLine($transaction->getId(), $line);
             }
+
+            $this->transition($transaction->getId(), 'submit');
 
             return $transaction;
         });
@@ -218,9 +229,9 @@ final class TransactionService
         return $this->locked(function () use ($id, $input): Transaction {
             $transaction = $this->get($id);
             $this->em->refresh($transaction);
-            $this->draftOwner($transaction);
+            $this->editableOwner($transaction);
             if (Status::RETURNED !== $transaction->getStatus()) {
-                throw new ConflictHttpException('Revisi hanya tersedia untuk transaksi Dikembalikan.');
+                throw new ConflictHttpException('Revisi hanya tersedia untuk transaksi Perlu Revisi.');
             }
 
             $lines = $input['items'] ?? [];
@@ -276,10 +287,12 @@ final class TransactionService
 
             $this->em->flush();
             $input['type'] = (string) $transaction->getType()->value;
-            $this->saveDraft($input, $id);
+            $this->saveHeader($input, $id);
             foreach ($added as $line) {
                 $this->addLine($id, $line);
             }
+
+            $this->transition($id, 'submit');
 
             return $transaction;
         });
@@ -292,7 +305,7 @@ final class TransactionService
             $this->keys($input, ['item_id', 'unit_id', 'qty', 'batch_number', 'expiry_date', 'stock_lot_id']);
             $transaction = $this->get($id);
             $this->em->refresh($transaction);
-            $this->draftOwner($transaction);
+            $this->editableOwner($transaction);
             $item = $this->reference(Item::class, $this->text($input, 'item_id'));
             $unit = $this->reference(Unit::class, $this->text($input, 'unit_id'));
             if (!$item->getUnit() || !in_array($item->getUnit()->getType(), Unit::TYPES, true)) {
@@ -366,7 +379,7 @@ final class TransactionService
                 }
             }
 
-            $this->validateDraftStock($transaction, $line);
+            $this->validateStock($transaction, $line);
             $this->em->persist($line);
         });
     }
@@ -377,7 +390,7 @@ final class TransactionService
         $this->locked(function () use ($id, $lineId): void {
             $transaction = $this->get($id);
             $this->em->refresh($transaction);
-            $this->draftOwner($transaction);
+            $this->editableOwner($transaction);
             $line = $this->reference(TransactionItem::class, $lineId);
             if ($line->getTransaction()->getId() !== $id) {
                 throw new NotFoundHttpException();
@@ -390,9 +403,9 @@ final class TransactionService
     public function availableActions(Transaction $transaction): array
     {
         $actions = match ($transaction->getStatus()) {
-            Status::DRAFT, Status::RETURNED => ['submit', 'cancel'],
+            Status::RETURNED => ['submit', 'cancel'],
             Status::SUBMITTED => [Type::RECEIPT === $transaction->getType() ? 'verify' : 'approve', 'return', 'cancel'],
-            Status::APPROVED => [Type::TRANSFER === $transaction->getType() ? 'send' : 'post', 'cancel'],
+            Status::APPROVED => Type::TRANSFER === $transaction->getType() ? ['send', 'cancel'] : ['approve', 'return', 'cancel'],
             Status::SENT => ['receive'],
             default => [],
         };
@@ -402,6 +415,14 @@ final class TransactionService
 
     private function canPerform(Transaction $transaction, string $action): bool
     {
+        if ($this->access->isOperator() && !$this->access->isAdmin() && !in_array($action, ['submit', 'send', 'receive'], true)) {
+            return false;
+        }
+
+        if ('cancel' === $action && $this->access->isApprover() && !$this->access->isAdmin()) {
+            return false;
+        }
+
         $review = in_array($action, ['verify', 'approve', 'return'], true)
             || ('cancel' === $action && Status::APPROVED === $transaction->getStatus());
         if (!$this->access->hasPermission('cancel' === $action && !$review ? 'delete' : 'edit')) {
@@ -490,8 +511,8 @@ final class TransactionService
                 throw new BadRequestHttpException('Tambahkan minimal satu barang sebelum memproses transaksi.');
             }
 
-            if (in_array($action, ['submit', 'approve'], true)) {
-                $this->validateDraftStock($transaction);
+            if ('submit' === $action || ('approve' === $action && Type::TRANSFER === $transaction->getType())) {
+                $this->validateStock($transaction);
                 $transaction->setStatus('submit' === $action ? Status::SUBMITTED : Status::APPROVED);
                 $transaction->recordTransition($action, $this->access->account());
 
@@ -578,7 +599,7 @@ final class TransactionService
         $this->em->persist($movement);
     }
 
-    private function validateDraftStock(Transaction $transaction, ?TransactionItem $extra = null): void
+    private function validateStock(Transaction $transaction, ?TransactionItem $extra = null): void
     {
         if (Type::RECEIPT === $transaction->getType()) {
             return;
@@ -742,10 +763,10 @@ final class TransactionService
         throw new ConflictHttpException('Nomor transaksi unik belum tersedia. Silakan coba kembali.');
     }
 
-    private function draftOwner(Transaction $transaction): void
+    private function editableOwner(Transaction $transaction): void
     {
-        if (!in_array($transaction->getStatus(), [Status::DRAFT, Status::RETURNED], true)) {
-            throw new ConflictHttpException('Hanya draft atau pengajuan yang dikembalikan dapat diubah.');
+        if (Status::RETURNED !== $transaction->getStatus()) {
+            throw new ConflictHttpException('Hanya transaksi yang perlu revisi dapat diubah.');
         }
 
         if (!$this->access->canOperate($transaction)) {

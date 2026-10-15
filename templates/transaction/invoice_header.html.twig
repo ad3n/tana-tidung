@@ -4,5 +4,4 @@
     <div><span class="transaction-invoice-label">{{ 'transaction.code'|trans }}</span><strong class="transaction-invoice-number">{{ transaction ? transaction.code : 'transaction.invoice.auto_number'|trans }}</strong></div>
     <div><span class="transaction-invoice-label">{{ 'transaction.fiscal_year'|trans }}</span><strong>{{ document_year }}</strong></div>
     {% if transaction %}<div><span class="transaction-invoice-label">{{ 'transaction.date'|trans }}</span><strong>{{ transaction.date|date('d-m-Y') }}</strong></div>{% endif %}
-    {% if not transaction %}<div><span class="transaction-invoice-label">{{ 'transaction.status'|trans }}</span><span class="badge badge-secondary">{{ 'transaction.status.1'|trans }}</span></div>{% endif %}
 </div>

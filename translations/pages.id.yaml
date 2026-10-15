@@ -194,7 +194,6 @@ transaction.type.1: Penerimaan
 transaction.type.2: Transfer
 transaction.type.3: Pengeluaran
 transaction.status: Status
-transaction.status.1: Draft
 transaction.status.2: Dikirim
 transaction.status.3: Selesai
 transaction.status.4: Dibatalkan
@@ -210,7 +209,7 @@ transaction.reference: No Faktur
 transaction.notes: Catatan
 transaction.notes_help: Wajib diisi untuk pengeluaran akhir seperti rusak atau kedaluwarsa.
 transaction.choose: Pilih
-transaction.save_draft: Simpan
+transaction.submit: Ajukan
 transaction.search: Cari nomor transaksi atau faktur
 transaction.view: Lihat
 transaction.back: Kembali
@@ -245,7 +244,7 @@ transaction.available_stock: Stok Tersedia (Satuan Dasar)
 transaction.actions: Aksi
 transaction.close: Tutup
 transaction.list: Daftar Transaksi
-transaction.entry_help: Isi data transaksi, tambahkan barang, lalu simpan draft untuk diperiksa sebelum diproses.
+transaction.entry_help: Isi data transaksi, tambahkan barang, lalu ajukan untuk disetujui.
 transaction.choose_origin: Pilih SKPD/OPD asal terlebih dahulu.
 transaction.no_available_stock: Tidak ada stok yang dapat digunakan untuk barang ini.
 transaction.insufficient_stock: Jumlah barang melebihi stok tersedia pada SKPD/OPD asal atau batch yang dipilih.
@@ -262,11 +261,11 @@ transaction.title_with_year: '%title% - Tahun Anggaran %year%'
 
 transaction.status.5: Diajukan
 transaction.status.6: Disetujui
-transaction.status.7: Dikembalikan
+transaction.status.7: Perlu Revisi
 transaction.action.submit: Ajukan
-transaction.action.verify: Verifikasi
+transaction.action.verify: Setujui
 transaction.action.approve: Setujui
-transaction.action.return: Kembalikan
+transaction.action.return: Revisi
 transaction.review_note: Alasan
 transaction.history: Riwayat Transaksi
 transaction.history_time: Waktu
@@ -276,7 +275,7 @@ transaction.invoice.government: Pemerintah Kabupaten Tana Tidung
 transaction.invoice.auto_number: Otomatis setelah disimpan
 
 transaction.revise: Revisi
-transaction.revision_done: Selesai Revisi
+transaction.revision_done: Ajukan Ulang
 transaction.stock_search: Nama atau Kode Barang
 transaction.stock_search_placeholder: Cari nama atau kode barang
 transaction.stock_search_action: Cari

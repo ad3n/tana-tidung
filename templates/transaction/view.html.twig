@@ -3,7 +3,7 @@
 {% block content %}
     {% set menu = convert_to_menu('transaction') %}
     {% set can_revise = transaction.status.value == 7 and can_operate and is_granted('edit', menu) %}
-    {% set editable = (transaction.status.value == 1 or (can_revise and revising)) and can_operate and is_granted('edit', menu) %}
+    {% set editable = (can_revise and revising) and can_operate and is_granted('edit', menu) %}
     {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
     <div class="row">
         <div class="col-12">
@@ -18,7 +18,7 @@
                     <td>{{ line.item_code }}</td><td>{{ line.item_name }}</td><td>{{ line.qty|number_format(2, ',', '.') }} {{ line.unit_name }}{% if line.unit_id != line.base_unit_id %} ({{ line.conversion_factor|number_format(2, ',', '.')|trim('0', 'right')|trim(',', 'right') }} {{ line.base_unit_code }}){% endif %}</td><td>{{ line.base_qty|number_format(2, ',', '.') }} {{ line.base_unit_name }}</td>
                     <td>
                         {% if line.allocations is not empty %}
-                            <table class="table table-sm table-bordered mb-0">
+                            <table class="table table-sm mb-0">
                                 <thead><tr><th>{{ 'transaction.batch'|trans }}</th><th>{{ (transaction.type.value == 1 ? 'transaction.received_qty' : 'transaction.taken_qty')|trans }}</th><th>{{ 'transaction.expiry'|trans }}</th></tr></thead>
                                 <tbody>{% for allocation in line.allocations %}
                                     <tr><td>{{ allocation.batch_number }}</td><td class="text-nowrap">{{ allocation.base_qty|number_format(6, ',', '.')|trim('0', 'right')|trim(',', 'right') }} {{ line.base_unit_name }}</td><td class="text-nowrap">{{ allocation.expiry_date ? allocation.expiry_date|date('d-m-Y') : '-' }}</td></tr>
@@ -40,7 +40,7 @@
                     {% if can_revise and not revising %}
                         <a class="btn btn-outline-info" href="{{ path('KejawenLab\\Application\\Admin\\Controller\\Transaction\\Get', {id: transaction.id, revise: 1}) }}">{{ 'transaction.revise'|trans }}</a>
                     {% endif %}
-                    {% for action in (revising ? [] : data.available_actions) %}
+                    {% for action in (revising ? [] : data.available_actions)|filter(action => action != 'submit') %}
                         {% if action in ['return', 'cancel'] %}
                             <button type="button" class="btn btn-outline-{{ action == 'return' ? 'warning' : 'danger' }}" data-toggle="modal" data-target="#transaction-{{ action }}-modal">{{ ('transaction.action.' ~ action)|trans }}</button>
                         {% else %}
@@ -79,7 +79,7 @@
     {% endfor %}
     {% if data.workflow_history is not empty %}
         <div class="card"><div class="card-header">{{ 'transaction.history'|trans }}</div><div class="card-body table-responsive">
-            <table class="table"><thead><tr><th>{{ 'transaction.history_time'|trans }}</th><th>{{ 'transaction.history_actor'|trans }}</th><th>{{ 'transaction.actions'|trans }}</th><th>{{ 'transaction.review_note'|trans }}</th></tr></thead><tbody>
+            <table class="table mb-0"><thead><tr><th>{{ 'transaction.history_time'|trans }}</th><th>{{ 'transaction.history_actor'|trans }}</th><th>{{ 'transaction.actions'|trans }}</th><th>{{ 'transaction.review_note'|trans }}</th></tr></thead><tbody>
             {% for entry in data.workflow_history %}<tr><td>{{ entry.at|date('d-m-Y H:i') }}</td><td>{{ entry.actor_name }}</td><td>{{ ('transaction.action.' ~ entry.action)|trans }}</td><td>{{ entry.note|default('-') }}</td></tr>{% endfor %}
             </tbody></table>
         </div></div>

@@ -52,6 +52,11 @@ final class TransactionAccess
         return 'APPRV' === strtoupper((string) $this->account()->getGroup()?->getCode());
     }
 
+    public function isOperator(): bool
+    {
+        return 'OPRTR' === strtoupper((string) $this->account()->getGroup()?->getCode());
+    }
+
     public function hasPermission(string $action): bool
     {
         return $this->authorization->authorize(new Permission('TRANSACTION', [$action]));

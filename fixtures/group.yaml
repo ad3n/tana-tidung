@@ -1,2 +1,3 @@
 - { code: 'SPRADM', name: 'SUPER ADMINISTRATOR', ref: 'group1' }
 - { code: 'APPRV', name: 'Approver', ref: 'approver' }
+- { code: 'OPRTR', name: 'Operator', ref: 'operator' }

@@ -728,12 +728,12 @@ Menu Transaksi mendukung penerimaan eksternal, transfer antar-SKPD/OPD, dan
 pengeluaran akhir melalui submenu Penerimaan, Transfer, Pengeluaran, serta Stok Barang. Masing-masing
 submenu form menetapkan jenis transaksi secara otomatis. Daftar Penerimaan, Daftar
 Pengeluaran, dan Daftar Transfer berada pada submenu terpisah, masing-masing dengan
-pencarian dan pagination. Tombol Simpan menyimpan draft untuk diperiksa sebelum diproses.
+pencarian dan pagination. Tombol Ajukan langsung menyimpan transaksi dengan status Diajukan.
 Form mengikuti susunan Sibaper lama: informasi transaksi di atas, tabel barang
 selebar halaman, dan Tambah Barang melalui modal. Header dan beberapa detail dapat
-disimpan sekaligus sebagai draft; kegagalan detail membatalkan seluruh penyimpanan.
+diajukan sekaligus; minimal satu barang wajib diisi dan kegagalan detail membatalkan seluruh penyimpanan.
 Transfer/pengeluaran menampilkan stok tersedia dalam satuan dasar sesuai SKPD asal.
-Simpan Draft belum mengubah stok; Kirim/Selesaikan tetap dilakukan setelah pemeriksaan.
+Pengajuan belum mengubah stok; Kirim/Selesaikan tetap dilakukan setelah pemeriksaan.
 Hak operasi tetap mengikuti menu Transaksi; hak submenu mengatur tampilnya navigasi.
 Jalankan `app:transactions:install` untuk memperbarui menu database tanpa memuat ulang
 fixtures. Hak submenu yang baru dibuat menyalin hak Transaksi setiap group.
@@ -741,33 +741,30 @@ Tahun Anggaran berada paling atas pada menu Master.
 Nomor Batch yang kosong dibuat otomatis saat penerimaan diselesaikan dengan format
 `BATCH<YYYYMMDD><RANDOM5DIGIT>`, satu nomor unik per detail barang. Nomor yang diisi
 manual tetap dipertahankan; transfer mengikuti batch asal.
-No Faktur wajib diisi untuk semua jenis transaksi, termasuk sebelum draft
+No Faktur wajib diisi untuk semua jenis transaksi, termasuk sebelum transaksi
 dikirim atau diselesaikan; nilai kosong atau hanya spasi ditolak.
 
 Nomor transaksi baru menggunakan `TRX<FiscalYear><SKPD_CODE><YYYYMMDD><RANDOM5DIGIT>`
 tanpa pemisah. Kode SKPD/OPD memakai tujuan untuk penerimaan dan asal untuk
 transfer/pengeluaran; tanggal memakai tanggal transaksi. Lima digit acak diperiksa
-agar nomor unik. Nomor tetap saat draft diedit dan nomor transaksi lama tidak diubah.
+agar nomor unik. Nomor tetap saat transaksi direvisi dan nomor transaksi lama tidak diubah.
 
 - `TransactionType` adalah backed enum integer: `RECEIPT=1`, `TRANSFER=2`, `DISPOSAL=3`.
-- `TransactionStatus`: `DRAFT=1`, `SENT=2`, `COMPLETED=3`, `CANCELLED=4`,
-  `SUBMITTED=5`, `APPROVED=6`, `RETURNED=7`. Nilai lama tetap dipertahankan.
+- `TransactionStatus`: `SENT=2`, `COMPLETED=3`, `CANCELLED=4`,
+  `SUBMITTED=5`, `APPROVED=6`, `RETURNED=7`. Status 1 (Draft) dihapus; draft lama dipindahkan ke Perlu Revisi oleh installer.
 - Doctrine menyimpan keduanya sebagai SMALLINT. Command instalasi menambahkan
   CHECK constraint, termasuk bentuk asal/tujuan/sumber yang sesuai jenis transaksi.
-- Penerimaan: Draft → Diajukan → Selesai melalui Ajukan dan Verifikasi.
-- Transfer: Draft → Diajukan → Disetujui → Dikirim → Selesai.
-- Pengeluaran: Draft → Diajukan → Disetujui → Selesai.
+- Penerimaan: Diajukan → Selesai melalui Ajukan dan Setujui.
+- Transfer: Diajukan → Disetujui → Dikirim → Selesai.
+- Pengeluaran: Diajukan → Selesai saat Setujui.
 - Pengajuan dapat dikembalikan dengan alasan, diperbaiki, kemudian diajukan ulang.
   Detail transaksi tetap berupa teks. Tombol Revisi muncul untuk pengurus berhak
-  Edit pada status Dikembalikan; mode `?revise=1` membuka header dan detail barang.
-  Selesai Revisi menyimpan header dan seluruh detail secara atomik, kemudian kembali
-  ke detail dengan status Dikembalikan. Detail dapat diganti dengan menghapus baris
+  Edit pada status Perlu Revisi; mode `?revise=1` membuka header dan detail barang.
+  Ajukan Ulang menyimpan header dan seluruh detail secara atomik, kemudian kembali
+  ke detail dengan status Diajukan. Detail dapat diganti dengan menghapus baris
   dan menambahkan kembali sebelum disimpan. Baris yang tidak diubah mempertahankan
   snapshot konversinya. Jika validasi gagal, seluruh data lama tetap utuh.
-  Ajukan pada detail mengirim pengajuan ulang.
-  Hanya Draft dan Dikembalikan yang dapat diedit. Pembuat dapat membatalkan Draft,
-  Dikembalikan, atau Diajukan dengan hak Delete; pembatalan Disetujui dilakukan
-  approver dengan hak Edit. Super admin dapat membatalkan semua transaksi sebelum
+  Hanya Perlu Revisi yang dapat diedit. Pembatalan untuk APPRV dan OPRTR tidak tersedia. Super admin dapat membatalkan semua transaksi sebelum
   pergerakan stok. Alasan pengembalian/pembatalan wajib diisi.
 - Riwayat tindakan, status, ID/nama pelaku, waktu, dan alasan disimpan di
   `workflow_history` dan ditampilkan pada detail transaksi. Transaksi lama memiliki
@@ -800,7 +797,9 @@ atau tujuan penerimaan otomatis organisasi pengguna; ID organisasi yang dimanipu
 akan ditolak. Pengguna hanya melihat stok sendiri dan transaksi yang melibatkan
 organisasinya. Pengurus Barang tujuan transfer atau super admin dapat menerima.
 
-Group `APPRV` memverifikasi penerimaan milik organisasinya dan menyetujui pengeluaran/
+Group `OPRTR` (Operator) memiliki akses input, pengajuan, revisi, daftar transaksi dan stok sesuai SKPD/OPD. Operator tidak dapat menyetujui atau menyelesaikan pengeluaran. Operator asal menekan Kirim pada transfer yang disetujui; Operator tujuan menekan Terima. Semua menu non-transaksi memiliki mapping permission false.
+
+Group `APPRV` tidak melihat atau mengakses halaman input Penerimaan/Transfer/Pengeluaran. APPRV memverifikasi penerimaan milik organisasinya dan menyetujui pengeluaran/
 transfer dari organisasinya. Approver tujuan transfer tidak dapat menyetujui
 pengeluaran pihak asal. APPRV tidak dapat membuat atau mengubah isi transaksi,
 mengajukan, mengirim, maupun mengonfirmasi penerimaan transfer. Pembuat transaksi
@@ -808,17 +807,16 @@ tidak dapat menyetujui sendiri jika kemudian menjadi APPRV. Super admin mendapat
 pengecualian untuk memverifikasi/menyetujui semua organisasi, termasuk transaksi
 yang dibuatnya sendiri, namun tetap mengikuti urutan status.
 
-Pengajuan dan persetujuan tidak mengubah atau mencadangkan stok. Stok penerimaan
-bertambah saat verifikasi; pengeluaran berkurang saat Selesaikan; transfer masuk
+Pengajuan tidak mengubah atau mencadangkan stok. Stok penerimaan
+bertambah dan pengeluaran berkurang saat Setujui; persetujuan transfer belum mengubah stok. Transfer masuk
 Dalam Perjalanan saat Kirim. Saldo diperiksa kembali saat pengajuan, persetujuan,
 dan pembukuan untuk mencegah kelebihan pengeluaran.
 
 Hak menu TRANSACTION tetap diperlukan: View untuk daftar/detail/stok, Add untuk
-membuat draft, Edit untuk menyunting/mengajukan/memeriksa/mengirim/membukukan/menerima,
+membuat pengajuan, Edit untuk menyunting/mengajukan/memeriksa/mengirim/membukukan/menerima,
 Delete untuk pembatalan oleh pembuat. Pembatasan peran dan status tetap berlaku di API. Data master yang sudah direferensikan transaksi tidak
 boleh dihapus agar riwayat tetap dapat dibaca. Berikan View/Add/Edit/Delete yang sesuai melalui Hak Akses
-Group. Instalasi hanya mengaktifkan semua hak secara otomatis untuk super admin;
-grup lain tidak diberi akses baru tanpa pengaturan administrator.
+Group. Installer menyinkronkan APPRV dan OPRTR berdasarkan fixtures, termasuk mapping false pada menu lain.
 
 ### Instalasi tanpa menghapus data
 
@@ -830,7 +828,7 @@ docker compose exec app php bin/console app:transactions:install
 
 Command terakhir idempotent: menambahkan kolom riwayat jika belum ada, memperbarui
 constraint status, serta membuat menu/permission yang belum ada,
-tanpa menimpa izin grup yang sudah dikonfigurasi. Jangan memuat ulang seluruh fixtures
+dan menyinkronkan izin APPRV/OPRTR sesuai fixtures. Draft lama dipindahkan ke Perlu Revisi tanpa mutasi stok; izin group lain dipertahankan. Jangan memuat ulang seluruh fixtures
 pada database yang sudah berisi data.
 
 ### API transaksi
@@ -841,22 +839,21 @@ Nilai `type` dan `status` pada respons JSON adalah integer; jumlah adalah string
 | Method | Endpoint | Keterangan |
 |---|---|---|
 | GET | `/api/transactions?page=1&q=...` | Daftar sesuai organisasi, 25 dokumen per halaman |
-| POST | `/api/transactions` | Buat draft |
+| POST | `/api/transactions` | Ajukan header beserta array `items` secara atomik |
 | GET | `/api/transactions/{id}` | Detail dan alokasi batch |
-| PUT | `/api/transactions/{id}` | Ganti isi header draft; jenis tetap |
-| POST | `/api/transactions/{id}/items` | Tambah detail |
-| DELETE | `/api/transactions/{id}/items/{lineId}` | Hapus detail draft |
-| POST | `/api/transactions/{id}/submit` | Ajukan draft atau perbaikan |
-| POST | `/api/transactions/{id}/verify` | Verifikasi penerimaan dan bukukan stok |
-| POST | `/api/transactions/{id}/approve` | Setujui transfer/pengeluaran |
-| POST | `/api/transactions/{id}/return` | Kembalikan pengajuan; JSON `note` wajib |
-| POST | `/api/transactions/{id}/post` | Selesaikan pengeluaran yang disetujui |
+| PUT | `/api/transactions/{id}` | Revisi header dan array `items`, lalu otomatis ajukan ulang; jenis tetap |
+| POST | `/api/transactions/{id}/items` | Tambah detail transaksi Perlu Revisi |
+| DELETE | `/api/transactions/{id}/items/{lineId}` | Hapus detail transaksi Perlu Revisi |
+| POST | `/api/transactions/{id}/submit` | Ajukan perbaikan melalui API |
+| POST | `/api/transactions/{id}/verify` | Setujui penerimaan dan bukukan stok |
+| POST | `/api/transactions/{id}/approve` | Setujui transfer; setujui dan selesaikan pengeluaran secara atomik |
+| POST | `/api/transactions/{id}/return` | Minta revisi pengajuan; JSON `note` wajib |
 | POST | `/api/transactions/{id}/send` | Kirim transfer yang disetujui |
 | POST | `/api/transactions/{id}/receive` | Terima seluruh transfer |
 | POST | `/api/transactions/{id}/cancel` | Batalkan sebelum pergerakan stok; JSON `note` wajib |
 | GET | `/api/transactions/stocks?organization_id=...` | Saldo per organisasi, barang, batch, dan posisi stok |
 
-Contoh header penerimaan (ID berupa UUID aktual):
+Contoh pengajuan penerimaan atomik (ID berupa UUID aktual):
 
 ```json
 {
@@ -865,11 +862,12 @@ Contoh header penerimaan (ID berupa UUID aktual):
   "to_organization_id": "UUID-SKPD",
   "source_id": "UUID-SUMBER",
   "reference_number": "BA-001",
-  "notes": "Penerimaan awal"
+  "notes": "Penerimaan awal",
+  "items": [{"item_id": "UUID-BARANG", "unit_id": "UUID-SATUAN", "qty": "2.5", "expiry_date": "2028-01-01"}]
 }
 ```
 
-Detail penerimaan:
+Format masing-masing baris `items` penerimaan:
 
 ```json
 {
@@ -895,7 +893,7 @@ docker compose exec app php -d memory_limit=512M tests/transactions-smoke.php
 
 Pengujian membuat akun khusus agar tidak mengeluarkan sesi admin pengguna, menguji
 akses APPRV lintas organisasi, verifikasi/approval super admin, pengembalian dan
-pengajuan ulang, pembatalan, riwayat, FEFO, konversi snapshot, rollback, pembukuan bersamaan,
+pengajuan ulang, riwayat, FEFO lintas batch, konversi snapshot, rollback atomik,
 serta halaman admin, kemudian membersihkan hanya data uji miliknya.
 
 ### Ringkasan Stok Barang
@@ -919,8 +917,8 @@ dan `batches`; filter `q` serta `organization_id` berlaku pada kedua bentuk.
 ### Batas stok dan pembagian batch
 
 Transfer dan pengeluaran memeriksa stok tersedia SKPD asal saat detail ditambahkan,
-saat header draft diubah, dan saat transaksi dikirim/diselesaikan. Jumlah semua
-baris barang yang sama dihitung setelah konversi ke satuan dasar. Draft tidak
+saat header direvisi, dan saat transaksi dikirim/diselesaikan. Jumlah semua
+baris barang yang sama dihitung setelah konversi ke satuan dasar. Pengajuan tidak
 mereservasi stok; pengecekan ulang saat posting memakai lock database.
 
 Batch manual dibatasi pada saldo batch tersebut. Baris otomatis memakai FEFO,
@@ -953,3 +951,14 @@ belum dipenuhi. Rangkaian `else`/`elseif`, `catch`/`finally`, serta `do ... whil
 tetap menyatu, dan tidak ada tambahan baris kosong sebelum kurung penutup induk.
 Implementasi menggunakan AST PHP agar string, closure, dan atribut tidak dianggap
 sebagai blok kontrol. Pengujiannya berada di `tests/coding-style/`.
+
+### Standar tabel transaksi
+
+Gunakan `<div class="card-body table-responsive">` dengan tabel sebagai anak
+langsung dan class `table mb-0` untuk tabel utama pada form, daftar, detail,
+riwayat, dan stok. Gunakan style bawaan tema untuk font, padding, warna header,
+dan garis horizontal; hindari `table-bordered`, `table-hover`, serta override
+header khusus halaman. Tabel batch di dalam baris memakai `table table-sm mb-0`
+agar tetap ringkas. Tabel input dan revisi berbagi komponen
+`templates/transaction/pending_items.html.twig` agar perubahan kolom dan style
+berlaku konsisten pada Penerimaan, Transfer, dan Pengeluaran.

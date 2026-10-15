@@ -36,7 +36,7 @@ class Transaction
     private TransactionType $type;
 
     #[ORM\Column(type: 'smallint', enumType: TransactionStatus::class)]
-    private TransactionStatus $status = TransactionStatus::DRAFT;
+    private TransactionStatus $status = TransactionStatus::SUBMITTED;
 
     #[ORM\Column(type: 'date_immutable')]
     private DateTimeImmutable $date;
